@@ -1,2 +1,5 @@
 nightincode*.vsix
 .DS_Store
+node_modules
+.shadow-cljs
+extension.js
