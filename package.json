@@ -29,6 +29,11 @@
   ],
   "main": "./extension.js",
   "contributes": {
+    "configurationDefaults": {
+      "[clojure]": {
+        "editor.wordSeparators": "()[]{}\\.,;@$%^&|\"`~/"
+      }
+    },
     "languages": [
       {
         "id": "clojure",
