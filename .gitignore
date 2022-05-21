@@ -3,3 +3,4 @@ nightincode*.vsix
 node_modules
 .shadow-cljs
 extension.js
+Nightincode.sublime-workspace
