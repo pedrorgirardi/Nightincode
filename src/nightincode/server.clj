@@ -7,12 +7,19 @@
     InitializeResult
     ServerCapabilities
     TextDocumentSyncKind
-    CompletionOptions)
+    CompletionOptions
+    CompletionParams
+    CompletionItem
+    CompletionItemKind)
 
    (org.eclipse.lsp4j.services
     LanguageClient
     LanguageServer
-    LanguageClientAware)))
+    LanguageClientAware
+    TextDocumentService)
+
+   (org.eclipse.lsp4j.jsonrpc.messages
+    Either)))
 
 ;; The compiler will emit warnings when reflection is needed
 ;; to resolve Java method calls or field accesses.
@@ -22,6 +29,21 @@
 
 (defn complete ^CompletableFuture [value]
   (doto (CompletableFuture.) (.complete value)))
+
+(def text-document-service
+  (reify TextDocumentService
+
+    ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
+    ;; Completion items are presented in the IntelliSense user interface.
+    ;; If computing complete completion items is expensive servers can additional provide
+    ;; a handler for the resolve completion item request.
+    ;; This request is sent when a completion item is selected in the user interface.
+    (^CompletableFuture completion [_ ^CompletionParams _params]
+     (complete (Either/forLeft [(doto (CompletionItem.)
+                                  (.setInsertText "(map )")
+                                  (.setLabel "clojure.core.map")
+                                  (.setKind (CompletionItemKind/Function))
+                                  (.setDetail "Bla bla..."))])))))
 
 (def server
   (reify LanguageServer LanguageClientAware
@@ -48,7 +70,7 @@
         ;; The server provides completion support.
         (.setCompletionProvider capabilities (CompletionOptions.))
 
-        (reset! state-ref {:TextDocumentService nil
+        (reset! state-ref {:TextDocumentService text-document-service
                            :WorkspaceService nil})
 
         (complete initializer)))
