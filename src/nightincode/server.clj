@@ -10,13 +10,15 @@
     CompletionOptions
     CompletionParams
     CompletionItem
-    CompletionItemKind)
+    CompletionItemKind
+    WorkspaceSymbolParams)
 
    (org.eclipse.lsp4j.services
     LanguageClient
     LanguageServer
     LanguageClientAware
-    TextDocumentService)
+    TextDocumentService
+    WorkspaceService)
 
    (org.eclipse.lsp4j.jsonrpc.messages
     Either)))
@@ -45,6 +47,13 @@
                                   (.setKind (CompletionItemKind/Function))
                                   (.setDetail "Bla bla..."))])))))
 
+(def workspace-service
+  (reify WorkspaceService
+
+    ;; The workspace symbol request is sent from the client to the server
+    ;; to list project-wide symbols matching the query string.
+    (^CompletableFuture symbol [_ ^WorkspaceSymbolParams _params])))
+
 (def server
   (reify LanguageServer LanguageClientAware
 
@@ -71,7 +80,7 @@
         (.setCompletionProvider capabilities (CompletionOptions.))
 
         (reset! state-ref {:TextDocumentService text-document-service
-                           :WorkspaceService nil})
+                           :WorkspaceService workspace-service})
 
         (complete initializer)))
 
