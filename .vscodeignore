@@ -14,3 +14,7 @@ demo/**
 server/**
 pom.xml
 *.vsix
+node_modules/
+Nightincode.sublime-project
+Nightincode.sublime-workspace
+deps.edn
