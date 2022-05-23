@@ -14,7 +14,6 @@
   },
   "license": "Apache-2.0",
   "engines": {
-    "node": ">=16",
     "vscode": "^1.66.0"
   },
   "categories": [
@@ -66,5 +65,8 @@
   },
   "devDependencies": {
     "shadow-cljs": "2.17.5"
+  },
+  "dependencies": {
+    "vscode-languageclient": "^8.0.1"
   }
 }
