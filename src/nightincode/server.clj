@@ -98,8 +98,6 @@
   (getWorkspaceService [_]
     (:WorkspaceService @state-ref))
 
-
-
   ;; The shutdown request is sent from the client to the server. It asks the server to shutdown,
   ;; but to not exit (otherwise the response might not be delivered correctly to the client).
   ;; There is a separate exit notification that asks the server to exit.
