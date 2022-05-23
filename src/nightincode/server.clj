@@ -11,7 +11,12 @@
     CompletionParams
     CompletionItem
     CompletionItemKind
-    WorkspaceSymbolParams)
+    WorkspaceSymbolParams
+    DidOpenTextDocumentParams
+    DidChangeTextDocumentParams
+    DidCloseTextDocumentParams
+    DidSaveTextDocumentParams
+    WillSaveTextDocumentParams)
 
    (org.eclipse.lsp4j.services
     LanguageClient
@@ -53,7 +58,21 @@
                                 (.setInsertText "(map )")
                                 (.setLabel "clojure.core.map")
                                 (.setKind (CompletionItemKind/Function))
-                                (.setDetail "Bla bla..."))]))))
+                                (.setDetail "Bla bla..."))])))
+
+  ;; The document open notification is sent from the client to the server to signal newly opened text documents.
+  ;; The document's truth is now managed by the client and the server must not try to read the document's truth using the document's uri.
+  (^void didOpen [_ ^DidOpenTextDocumentParams _params])
+
+  ;; The document change notification is sent from the client to the server to signal changes to a text document.
+  (^void didChange [_ ^DidChangeTextDocumentParams _params])
+
+  ;; The document close notification is sent from the client to the server when the document got closed in the client.
+  ;; The document's truth now exists where the document's uri points to (e.g. if the document's uri is a file uri the truth now exists on disk).
+  (^void didClose [_ ^DidCloseTextDocumentParams _params])
+
+  ;; The document save notification is sent from the client to the server when the document for saved in the client.
+  (^void didSave [_ ^DidSaveTextDocumentParams _params]))
 
 (deftype NightincodeWorkspaceService []
   WorkspaceService
