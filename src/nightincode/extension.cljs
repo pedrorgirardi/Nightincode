@@ -11,19 +11,23 @@
 (defn activate [^js context]
   (let [^js output (vscode/window.createOutputChannel "Nightincode")
 
-        jar-path (path/join (.-extensionPath context) "server.jar")
+        server-JAR-path (path/join (.-extensionPath context) "server.jar")
 
-        server-options #js{:run #js{:command "java" :args #js["-jar", jar-path]}
-                           :debug #js{:command "java" :args #js["-jar", jar-path]}}
+        server-options #js{:run #js{:command "java" :args #js["-jar", server-JAR-path]}
+                           :debug #js{:command "java" :args #js["-jar", server-JAR-path]}}
 
         client-options #js{:documentSelector #js[#js{:language "clojure"}]
-                           :outputChannel output}]
+                           :outputChannel output}
+
+        client (client/LanguageClient. "Nightincode" "Nightincode" server-options client-options)
+
+        ^js subscriptions (.-subscriptions context)]
 
     (vscode/languages.setLanguageConfiguration "clojure" #js {:wordPattern word-pattern})
 
     (.appendLine output (str "Extension Path: " (.-extensionPath context) "\n"))
 
-    (.appendLine output "Happy coding!")))
+    (.push subscriptions (.start client))))
 
 (defn deactivate []
   nil)
