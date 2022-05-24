@@ -2,7 +2,8 @@
   (:require
    [clojure.core.server :refer [start-server]]
    [clojure.java.io :as io]
-   [clojure.data.json :as json])
+   [clojure.data.json :as json]
+   [clojure.string :as str])
 
   (:import
    (java.util.concurrent
@@ -76,11 +77,20 @@
         (fn [m]
           (let [completion-item-kind {"var" (CompletionItemKind/Variable)
                                       "function" (CompletionItemKind/Function)
-                                      "macro" (CompletionItemKind/Function)}]
-           (doto (CompletionItem.)
-            (.setInsertText (:name m))
-            (.setLabel (str (:ns m) "/" (:name m)))
-            (.setKind (completion-item-kind (:type m))))))))
+                                      "macro" (CompletionItemKind/Function)}
+
+                label (str (:ns m) "/" (:name m))
+
+                doc (or (:doc m) "")
+
+                args (str/join "\n" (map #(str "[" % "]") (:arglists m)))
+
+                detail (str/join "\n\n" [label args doc])]
+            (doto (CompletionItem.)
+              (.setInsertText (:name m))
+              (.setLabel (:name m))
+              (.setKind (completion-item-kind (:type m)))
+              (.setDetail detail))))))
     (:vars @clojuredocs)))
 
 
