@@ -115,12 +115,19 @@
       ;; The server provides completion support.
       (.setCompletionProvider capabilities (CompletionOptions.))
 
+      (swap! state-ref assoc :ServerCapabilities capabilities)
+
       (completed initializer)))
 
   (^void initialized [_ ^InitializedParams _params]
    (let [{client :LanguageClient
-          port :socket-repl-port} @state-ref]
-     (.logMessage client (MessageParams. MessageType/Log (str "Socket REPL port: " port)))))
+          capabilities :ServerCapabilities
+          REPL-port :REPL/port} @state-ref]
+     (.logMessage client
+       (MessageParams. MessageType/Log
+         (str "Debug:"
+           "\n\t- Socket REPL port: " REPL-port
+           "\n\t- Capabilities: " capabilities)))))
 
   (getTextDocumentService [_]
     (NightincodeDocumentService.))
@@ -156,16 +163,16 @@
   ([{:keys [server]}]
    (let [^Launcher launcher (launcher {:server server})
 
-         port (with-open [socket (ServerSocket. 0)]
-                (.getLocalPort socket))]
+         socket-port (with-open [socket (ServerSocket. 0)]
+                       (.getLocalPort socket))]
 
      (start-server
-       {:port port
-        :name "REPL"
+       {:name "REPL"
+        :port socket-port
         :accept 'clojure.core.server/repl})
 
      (swap! state-ref assoc
-       :socket-repl-port port
+       :REPL/port socket-port
        :LanguageClient (.getRemoteProxy launcher))
 
      (.startListening launcher))))
