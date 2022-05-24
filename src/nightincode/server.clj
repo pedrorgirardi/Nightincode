@@ -1,6 +1,8 @@
 (ns nightincode.server
   (:require
-   [clojure.core.server :refer [start-server]])
+   [clojure.core.server :refer [start-server]]
+   [clojure.java.io :as io]
+   [clojure.data.json :as json])
 
   (:import
    (java.util.concurrent
@@ -59,6 +61,29 @@
   ^MessageParams [message]
   (MessageParams. MessageType/Log message))
 
+
+(def clojuredocs
+  "ClojureDocs.org database."
+  (delay (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword)))
+
+(defn clojuredocs-completion []
+  (into []
+    (comp
+      (filter
+        (fn [m]
+          (= (:ns m) "clojure.core")))
+      (map
+        (fn [m]
+          (let [completion-item-kind {"var" (CompletionItemKind/Variable)
+                                      "function" (CompletionItemKind/Function)
+                                      "macro" (CompletionItemKind/Function)}]
+           (doto (CompletionItem.)
+            (.setInsertText (:name m))
+            (.setLabel (str (:ns m) "/" (:name m)))
+            (.setKind (completion-item-kind (:type m))))))))
+    (:vars @clojuredocs)))
+
+
 (deftype  NightincodeDocumentService []
   TextDocumentService
 
@@ -68,11 +93,7 @@
   ;; a handler for the resolve completion item request.
   ;; This request is sent when a completion item is selected in the user interface.
   (^CompletableFuture completion [_ ^CompletionParams _params]
-   (completed (Either/forLeft [(doto (CompletionItem.)
-                                 (.setInsertText "(map )")
-                                 (.setLabel "clojure.core.map")
-                                 (.setKind (CompletionItemKind/Function))
-                                 (.setDetail "Bla bla..."))])))
+   (completed (Either/forLeft (clojuredocs-completion))))
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
   ;; The document's truth is now managed by the client and the server must not try to read the document's truth using the document's uri.
