@@ -186,7 +186,7 @@
    (let [{client :LSP/LanguageClient
           capabilities :LSP/ServerCapabilities
           REPL-port :REPL/port} @state-ref]
-     (.logMessage client
+     (.logMessage ^LanguageClient client
        (mlog
          (str "Debug:"
            "\n\t- Socket REPL port: " REPL-port
