@@ -54,6 +54,11 @@
 (defn completed ^CompletableFuture [value]
   (CompletableFuture/completedFuture value))
 
+(defn mlog
+  "Log MessageParams."
+  ^MessageParams [message]
+  (MessageParams. MessageType/Log message))
+
 (deftype  NightincodeDocumentService []
   TextDocumentService
 
@@ -124,7 +129,7 @@
           capabilities :ServerCapabilities
           REPL-port :REPL/port} @state-ref]
      (.logMessage client
-       (MessageParams. MessageType/Log
+       (mlog
          (str "Debug:"
            "\n\t- Socket REPL port: " REPL-port
            "\n\t- Capabilities: " capabilities)))))
