@@ -142,12 +142,12 @@
   ;;  * out - output stream to send outgoing messages
   (LSPLauncher/createServerLauncher server System/in System/out))
 
-(defn start []
-  (let [^LanguageServer server (NightincodeServer.)
-
-        ^Launcher launcher (launcher {:server server})]
-
-    (.startListening launcher)))
+(defn start
+  ([]
+   (start {:server (NightincodeServer.)}))
+  ([{:keys [server]}]
+   (let [^Launcher launcher (launcher {:server server})]
+     (.startListening launcher))))
 
 (defn -main [& _]
   (start))
