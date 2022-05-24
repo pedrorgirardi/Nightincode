@@ -178,13 +178,13 @@
       ;; The server provides completion support.
       (.setCompletionProvider capabilities (CompletionOptions.))
 
-      (swap! state-ref assoc :ServerCapabilities capabilities)
+      (swap! state-ref assoc :LSP/ServerCapabilities capabilities)
 
       (completed initializer)))
 
   (^void initialized [_ ^InitializedParams _params]
-   (let [{client :LanguageClient
-          capabilities :ServerCapabilities
+   (let [{client :LSP/LanguageClient
+          capabilities :LSP/ServerCapabilities
           REPL-port :REPL/port} @state-ref]
      (.logMessage client
        (mlog
@@ -236,7 +236,7 @@
 
      (swap! state-ref assoc
        :REPL/port socket-port
-       :LanguageClient (.getRemoteProxy launcher))
+       :LSP/LanguageClient (.getRemoteProxy launcher))
 
      (.startListening launcher))))
 
