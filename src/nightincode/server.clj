@@ -1,10 +1,17 @@
 (ns nightincode.server
+  (:require
+   [clojure.core.server :refer [start-server]])
+
   (:import
    (java.util.concurrent
     CompletableFuture)
 
+   (java.net
+    ServerSocket)
+
    (org.eclipse.lsp4j
     InitializeResult
+    InitializedParams
     ServerCapabilities
     TextDocumentSyncKind
     CompletionOptions
@@ -16,7 +23,9 @@
     DidChangeTextDocumentParams
     DidCloseTextDocumentParams
     DidSaveTextDocumentParams
-    WillSaveTextDocumentParams)
+    WillSaveTextDocumentParams
+    MessageParams
+    MessageType)
 
    (org.eclipse.lsp4j.services
     LanguageClient
@@ -108,6 +117,11 @@
 
       (completed initializer)))
 
+  (^void initialized [_ ^InitializedParams _params]
+   (let [{client :LanguageClient
+          port :socket-repl-port} @state-ref]
+     (.logMessage client (MessageParams. MessageType/Log (str "Socket REPL port: " port)))))
+
   (getTextDocumentService [_]
     (NightincodeDocumentService.))
 
@@ -124,13 +138,7 @@
 
   ;; A notification to ask the server to exit its process.
   (exit [_]
-    (System/exit (or (:exit-status-code @state-ref) -1)))
-
-  LanguageClientAware
-  (^void connect [_ ^LanguageClient client]
-   (swap! state-ref assoc :LanguageClient client)
-
-   nil))
+    (System/exit (or (:exit-status-code @state-ref) -1))))
 
 (defn launcher ^Launcher [{:keys [server]}]
   ;; Create a new Launcher for a given local service object,
@@ -146,7 +154,20 @@
   ([]
    (start {:server (NightincodeServer.)}))
   ([{:keys [server]}]
-   (let [^Launcher launcher (launcher {:server server})]
+   (let [^Launcher launcher (launcher {:server server})
+
+         port (with-open [socket (ServerSocket. 0)]
+                (.getLocalPort socket))]
+
+     (start-server
+       {:port port
+        :name "REPL"
+        :accept 'clojure.core.server/repl})
+
+     (swap! state-ref assoc
+       :socket-repl-port port
+       :LanguageClient (.getRemoteProxy launcher))
+
      (.startListening launcher))))
 
 (defn -main [& _]
