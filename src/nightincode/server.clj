@@ -42,7 +42,7 @@
 
 (def state-ref (atom nil))
 
-(defn complete ^CompletableFuture [value]
+(defn completed ^CompletableFuture [value]
   (CompletableFuture/completedFuture value))
 
 (deftype  NightincodeDocumentService []
@@ -54,11 +54,11 @@
   ;; a handler for the resolve completion item request.
   ;; This request is sent when a completion item is selected in the user interface.
   (^CompletableFuture completion [_ ^CompletionParams _params]
-   (complete (Either/forLeft [(doto (CompletionItem.)
-                                (.setInsertText "(map )")
-                                (.setLabel "clojure.core.map")
-                                (.setKind (CompletionItemKind/Function))
-                                (.setDetail "Bla bla..."))])))
+   (completed (Either/forLeft [(doto (CompletionItem.)
+                                 (.setInsertText "(map )")
+                                 (.setLabel "clojure.core.map")
+                                 (.setKind (CompletionItemKind/Function))
+                                 (.setDetail "Bla bla..."))])))
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
   ;; The document's truth is now managed by the client and the server must not try to read the document's truth using the document's uri.
@@ -106,16 +106,13 @@
       ;; The server provides completion support.
       (.setCompletionProvider capabilities (CompletionOptions.))
 
-      (reset! state-ref {:TextDocumentService (NightincodeDocumentService.)
-                         :WorkspaceService (NightincodeWorkspaceService.)})
-
-      (complete initializer)))
+      (completed initializer)))
 
   (getTextDocumentService [_]
-    (:TextDocumentService @state-ref))
+    (NightincodeDocumentService.))
 
   (getWorkspaceService [_]
-    (:WorkspaceService @state-ref))
+    (NightincodeWorkspaceService.))
 
   ;; The shutdown request is sent from the client to the server. It asks the server to shutdown,
   ;; but to not exit (otherwise the response might not be delivered correctly to the client).
@@ -141,27 +138,14 @@
   ;;
   ;; Parameters:
   ;;  * localService - the object that receives method calls from the remote service
-  ;;  * remoteInterface - an interface on which RPC methods are looked up
   ;;  * in - input stream to listen for incoming messages
   ;;  * out - output stream to send outgoing messages
   (LSPLauncher/createServerLauncher server System/in System/out))
 
 (defn start []
-  ;; Create a new Launcher for a given local service object,
-  ;; a given remote interface and an input and output stream.
-  ;;
-  ;; Parameters:
-  ;;  * localService - the object that receives method calls from the remote service
-  ;;  * remoteInterface - an interface on which RPC methods are looked up
-  ;;  * in - input stream to listen for incoming messages
-  ;;  * out - output stream to send outgoing messages
   (let [^LanguageServer server (NightincodeServer.)
 
-        ^Launcher launcher (launcher {:server server})
-
-        ^LanguageClient client (.getRemoteProxy launcher)]
-
-    (.connect ^LanguageClientAware server client)
+        ^Launcher launcher (launcher {:server server})]
 
     (.startListening launcher)))
 
@@ -174,8 +158,6 @@
   (def server (NightincodeServer.))
 
   (def server-launcher (launcher {:server server}))
-
-  (.connect ^LanguageClientAware server (.getRemoteProxy server-launcher))
 
   ;; Start a thread that listens to the input stream. The thread terminates when the stream is closed.
   (.startListening server-launcher)
