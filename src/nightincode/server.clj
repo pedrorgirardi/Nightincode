@@ -3,14 +3,17 @@
    [clojure.core.server :refer [start-server]]
    [clojure.java.io :as io]
    [clojure.data.json :as json]
-   [clojure.string :as str])
+   [clojure.string :as str]
+
+   [clj-kondo.core :as clj-kondo])
 
   (:import
    (java.util.concurrent
     CompletableFuture)
 
    (java.net
-    ServerSocket)
+    ServerSocket
+    URI)
 
    (org.eclipse.lsp4j
     InitializeResult
@@ -28,7 +31,8 @@
     DidSaveTextDocumentParams
     WillSaveTextDocumentParams
     MessageParams
-    MessageType)
+    MessageType
+    TextDocumentItem)
 
    (org.eclipse.lsp4j.services
     LanguageClient
@@ -79,13 +83,13 @@
                                       "function" (CompletionItemKind/Function)
                                       "macro" (CompletionItemKind/Function)}
 
-                label (str (:ns m) "/" (:name m))
+                detail-name (str (:ns m) "/" (:name m))
 
-                doc (or (:doc m) "")
+                detail-arglists (str/join "\n" (map #(str "[" % "]") (:arglists m)))
 
-                args (str/join "\n" (map #(str "[" % "]") (:arglists m)))
+                detail-docstring (or (:doc m) "")
 
-                detail (str/join "\n\n" [label args doc])]
+                detail (str/join "\n\n" [detail-name detail-arglists detail-docstring])]
             (doto (CompletionItem.)
               (.setInsertText (:name m))
               (.setLabel (:name m))
@@ -107,14 +111,37 @@
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
   ;; The document's truth is now managed by the client and the server must not try to read the document's truth using the document's uri.
-  (^void didOpen [_ ^DidOpenTextDocumentParams _params])
+  (^void didOpen [_ ^DidOpenTextDocumentParams params]
+   (let [^TextDocumentItem document (.getTextDocument params)
+
+         document-uri (.getUri document)
+         document-path (.getPath (URI. document-uri))
+
+         result (clj-kondo/run!
+                  {:lint [document-path]
+                   :config
+                   {:output
+                    {:analysis
+                     {:arglists true
+                      :locals true
+                      :keywords true
+                      :java-class-usages true}
+                     :format :json
+                     :canonical-paths true}}})
+
+         result (select-keys result [:findings :analysis :summary])]
+
+     (swap! state-ref assoc-in [:nightincode/index document-uri :clj-kondo/result] result)))
 
   ;; The document change notification is sent from the client to the server to signal changes to a text document.
   (^void didChange [_ ^DidChangeTextDocumentParams _params])
 
   ;; The document close notification is sent from the client to the server when the document got closed in the client.
   ;; The document's truth now exists where the document's uri points to (e.g. if the document's uri is a file uri the truth now exists on disk).
-  (^void didClose [_ ^DidCloseTextDocumentParams _params])
+  (^void didClose [_ ^DidCloseTextDocumentParams params]
+   ;; Dispose index when the document is closed.
+   (let [document-uri (.getUri (.getTextDocument params))]
+     (swap! state-ref update :nightincode/index dissoc document-uri)))
 
   ;; The document save notification is sent from the client to the server when the document for saved in the client.
   (^void didSave [_ ^DidSaveTextDocumentParams _params]))
