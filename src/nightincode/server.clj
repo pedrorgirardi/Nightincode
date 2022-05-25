@@ -67,6 +67,23 @@
   (MessageParams. MessageType/Log message))
 
 
+(defn analyze-document
+  ([^TextDocumentItem document]
+   (analyze-document document {:output
+                               {:analysis
+                                {:arglists true
+                                 :locals true
+                                 :keywords true
+                                 :java-class-usages true}
+                                :canonical-paths true}}))
+  ([^TextDocumentItem document config ]
+   (let [document-uri (.getUri document)
+         document-path (.getPath (URI. document-uri))]
+     (clj-kondo/run!
+       {:lint [document-path]
+        :config config}))))
+
+
 (def clojuredocs
   "ClojureDocs.org database."
   (delay (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword)))
@@ -114,24 +131,10 @@
   (^void didOpen [_ ^DidOpenTextDocumentParams params]
    (let [^TextDocumentItem document (.getTextDocument params)
 
-         document-uri (.getUri document)
-         document-path (.getPath (URI. document-uri))
-
-         result (clj-kondo/run!
-                  {:lint [document-path]
-                   :config
-                   {:output
-                    {:analysis
-                     {:arglists true
-                      :locals true
-                      :keywords true
-                      :java-class-usages true}
-                     :format :json
-                     :canonical-paths true}}})
-
+         result (analyze-document document)
          result (select-keys result [:findings :analysis :summary])]
 
-     (swap! state-ref assoc-in [:nightincode/index document-uri :clj-kondo/result] result)))
+     (swap! state-ref assoc-in [:nightincode/index (.getUri document) :clj-kondo/result] result)))
 
   ;; The document change notification is sent from the client to the server to signal changes to a text document.
   (^void didChange [_ ^DidChangeTextDocumentParams _params])
