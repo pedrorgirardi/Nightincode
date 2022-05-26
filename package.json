@@ -33,6 +33,24 @@
         "editor.wordSeparators": "()[]{}\\,;@$%^&|\"`~"
       }
     },
+    "configuration": [
+      {
+        "type": "object",
+        "title": "Nightincode",
+        "properties": {
+          "nightincode.trace.server": {
+            "type": "string",
+            "default": "verbose",
+            "enum": [
+              "off",
+              "messages",
+              "verbose"
+            ],
+            "description": "Trace LSP messages between the Visual Studio Code and the server."
+          }
+        }
+      }
+    ],
     "languages": [
       {
         "id": "clojure",

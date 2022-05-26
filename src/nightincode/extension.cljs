@@ -21,7 +21,7 @@
         client-options #js{:documentSelector #js[#js{:language "clojure"}]
                            :outputChannel output}
 
-        client (client/LanguageClient. "Nightincode" "Nightincode" server-options client-options)
+        client (client/LanguageClient. "nightincode" "Nightincode" server-options client-options)
 
         ^js subscriptions (.-subscriptions context)]
 
