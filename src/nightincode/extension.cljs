@@ -4,6 +4,8 @@
    ["path" :as path]
    ["vscode-languageclient/node" :as client]))
 
+(def state-ref (atom nil))
+
 (def word-pattern
   "Clojure symbol regex."
   #"(?:/|[^\s,;\(\)\[\]{}\"`~@\^\\][^\s,;\(\)\[\]{}\"`~@\^\\]*)")
@@ -23,11 +25,18 @@
 
         ^js subscriptions (.-subscriptions context)]
 
+    (reset! state-ref {:client client})
+
     (vscode/languages.setLanguageConfiguration "clojure" #js {:wordPattern word-pattern})
 
     (.appendLine output (str "Extension Path: " (.-extensionPath context) "\n"))
 
-    (.push subscriptions (.start client))))
+    (.push subscriptions (.start client))
+
+    (js/console.log "Activated Nightincode")))
 
 (defn deactivate []
-  nil)
+  (when-let [^js client (:client @state-ref)]
+    (.stop client))
+
+  (js/console.log "Deactivated Nightincode"))
