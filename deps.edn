@@ -7,7 +7,10 @@
   clj-kondo/clj-kondo {:mvn/version "2022.04.25"}}
 
  :aliases
- {:server-JAR
+ {:start
+  {:exec-fn nightincode.server/start}
+
+  :server-JAR
   {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
    :exec-fn hf.depstar/uberjar
    :exec-args {:main-class nightincode.server
@@ -17,5 +20,12 @@
    :jvm-opts     ["-Dclojure.compiler.direct-linking=true"
                   "-Dclojure.spec.skip-macros=true"]}
 
-  :start
-  {:exec-fn nightincode.server/start}}}
+  :LSP-JAR
+  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
+   :exec-fn hf.depstar/uberjar
+   :exec-args {:main-class language-server-protocol.core
+               :exec-fn hf.depstar/uberjar
+               :jar LSP.jar
+               :aot true}
+   :jvm-opts     ["-Dclojure.compiler.direct-linking=true"
+                  "-Dclojure.spec.skip-macros=true"]}}}
