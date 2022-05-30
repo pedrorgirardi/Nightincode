@@ -69,13 +69,13 @@
 
 (defn analyze-document
   ([^TextDocumentItem document]
-   (analyze-document document {:output
-                               {:analysis
-                                {:arglists true
-                                 :locals true
-                                 :keywords true
-                                 :java-class-usages true}
-                                :canonical-paths true}}))
+   (analyze-document document {:analysis
+                               {:arglists true
+                                :locals true
+                                :keywords true
+                                :java-class-usages true}
+                               :output
+                               {:canonical-paths true}}))
   ([^TextDocumentItem document config ]
    (let [document-uri (.getUri document)
          document-path (.getPath (URI. document-uri))]
