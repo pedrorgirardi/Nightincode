@@ -5,14 +5,16 @@
 
   (:import
    (java.io
-    PipedInputStream
-    PipedOutputStream)
+    StringReader)
 
    (java.util.concurrent
     CompletableFuture)
 
    (org.eclipse.lsp4j.jsonrpc
-    Endpoint))
+    Endpoint)
+
+   (clojure.lang
+    LineNumberingPushbackReader))
 
   (:gen-class))
 
@@ -37,6 +39,39 @@
 
 
 (comment
+
+  (def r
+    (LineNumberingPushbackReader.
+      (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{}")))
+
+  (.readLine r)
+
+  (with-in-str "Foo1: 1\r\nFoo2: 1\r\n"
+    (.readLine *in*))
+
+  (with-in-str "\r\n\r\n"
+    (.readLine *in*))
+
+
+  (let [line-ref (atom nil)
+
+        process-ref (atom {:header []
+                           :blank? false})]
+
+    (with-open [r (LineNumberingPushbackReader.
+                    (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{\"a\": 2}"))]
+
+      (while (reset! line-ref (.readLine r))
+        (cond
+          (:blank? @process-ref)
+          (prn (:header @process-ref) (json/read-str @line-ref))
+
+          (str/blank? @line-ref)
+          (swap! process-ref assoc :blank? true)
+
+          :else
+          (swap! process-ref update :header conj @line-ref)))))
+
 
   ;; An endpoint is a generic interface that accepts jsonrpc requests and notifications.
   (def endpoint
