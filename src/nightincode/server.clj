@@ -29,7 +29,6 @@
     DidChangeTextDocumentParams
     DidCloseTextDocumentParams
     DidSaveTextDocumentParams
-    WillSaveTextDocumentParams
     MessageParams
     MessageType
     TextDocumentItem)
@@ -37,7 +36,6 @@
    (org.eclipse.lsp4j.services
     LanguageClient
     LanguageServer
-    LanguageClientAware
     TextDocumentService
     WorkspaceService)
 
