@@ -55,38 +55,44 @@
       {:name "Nightincode"}}}))
 
 
-#_(defn -main [& _]
+(defn -main [& _]
   (let [line-ref (atom nil)
+
+        process-ref (atom {})
 
         header-ref (atom [])]
 
     (while (reset! line-ref (.readLine *in*))
+      (let [line @line-ref]
+        (cond
+          (str/blank? line)
+          (do
+            (log "BLANK/PARSE NEXT" line)
+            (swap! process-ref assoc :parse-next? true)
+            (print "")
+            (flush))
 
-      (log @line-ref)
+          (:parse-next? @process-ref)
+          (let [_ (log "PARSE" line)
 
-      (cond
-        (str/blank? @line-ref)
-        (let [s (.readLine *in*)
+                {:keys [content]} (parse-content-header-string line)
 
-              _ (log s)
+                jsonrpc (json/read-str content)
 
-              jsonrpc (json/read-str s)
+                r (response jsonrpc)
+                r (json/write-str r)
+                r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
 
-              _ (log jsonrpc)
+            (print r)
+            (flush))
 
-              r (response jsonrpc)
-              r (json/write-str r)
-              r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
-
-          (print r)
-
-          (flush))
-
-        :else
-        (swap! header-ref conj @line-ref)))))
+          :else
+          (do
+            (log "HEADER: " line)
+            (swap! header-ref conj line)))))))
 
 
-(defn -main [& _]
+#_(defn -main [& _]
   (let [counter-ref (atom 0)
 
         line-ref (atom nil)]
