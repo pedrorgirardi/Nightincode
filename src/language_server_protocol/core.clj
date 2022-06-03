@@ -5,6 +5,7 @@
 
   (:import
    (java.io
+    File
     StringReader)
 
    (java.util.concurrent
@@ -18,6 +19,10 @@
 
   (:gen-class))
 
+(defn log [s]
+  (spit (File. (System/getProperty "java.io.tmpdir") "Nightincode.log") s :append true))
+
+
 (defn response [request]
   (let [{:keys [id]} request]
     {:id id
@@ -29,8 +34,6 @@
       :serverInfo
       {:name "Nightincode"}}}))
 
-(defn log [s]
-  (spit "Nightincode.log" s :append true))
 
 (defn -main [& _]
   (let [line-ref (atom nil)
