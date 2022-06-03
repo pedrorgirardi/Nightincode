@@ -23,6 +23,25 @@
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
     (spit f (apply str "\nDEBUG " s) :append true)))
 
+(defn parse-content-header-string [s]
+  ;; Examples:
+  ;;
+  ;; (parse-content-header-string "{}Content-Length: 183")
+  ;; => {:header "Content-Length: 183", :content "{}"}
+  ;;
+  ;; (parse-content-header-string "{}")
+  ;; => {:header "", :content "{}"}
+  ;;
+  ;; (parse-content-header-string "{}   ")
+  ;; => {:header "", :content "{}"}
+  ;;
+  ;; (parse-content-header-string "{}       Content-Length: 183")
+  ;; => {:header "Content-Length: 183", :content "{}"}
+
+  ;; Search backwards for the last '}'.
+  (let [last-curly-index (str/last-index-of s "}" (dec (count s)))]
+    {:header (str/triml (subs s (inc last-curly-index)))
+     :content (subs s 0 (inc last-curly-index))}))
 
 (defn response [request]
   (let [{:keys [id]} request]
@@ -97,6 +116,21 @@
 
 
 (comment
+
+
+
+  (parse-content-header-string "{}Content-Length: 183")
+  ;; => {:header "Content-Length: 183", :content "{}"}
+
+  (parse-content-header-string "{}")
+  ;; => {:header "", :content "{}"}
+
+  (parse-content-header-string "{}   ")
+  ;; => {:header "", :content "{}"}
+
+  (parse-content-header-string "{}       Content-Length: 183")
+  ;; => {:header "Content-Length: 183", :content "{}"}
+
 
   (def r
     (LineNumberingPushbackReader.
