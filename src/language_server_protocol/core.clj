@@ -19,8 +19,9 @@
 
   (:gen-class))
 
-(defn log [s]
-  (spit (File. (System/getProperty "java.io.tmpdir") "Nightincode.log") s :append true))
+(defn log [& s]
+  (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
+    (spit f (apply str "\nDEBUG " s) :append true)))
 
 
 (defn response [request]
@@ -35,7 +36,7 @@
       {:name "Nightincode"}}}))
 
 
-(defn -main [& _]
+#_(defn -main [& _]
   (let [line-ref (atom nil)
 
         header-ref (atom [])]
@@ -46,13 +47,13 @@
 
       (cond
         (str/blank? @line-ref)
-        (let [_ (log "Read after blank")
+        (let [s (.readLine *in*)
 
-              s (.readLine *in*)
-
-              _ (log (str "After blank - before JSON " s))
+              _ (log s)
 
               jsonrpc (json/read-str s)
+
+              _ (log jsonrpc)
 
               r (response jsonrpc)
               r (json/write-str r)
@@ -63,10 +64,36 @@
           (flush))
 
         :else
-        (do
-          (log "Append header")
+        (swap! header-ref conj @line-ref)))))
 
-          (swap! header-ref conj @line-ref))))))
+
+(defn -main [& _]
+  (let [counter-ref (atom 0)
+
+        line-ref (atom nil)]
+
+    (while (reset! line-ref (.readLine *in*))
+
+      (swap! counter-ref inc)
+
+      (log (str "### " @counter-ref " ### ") @line-ref)
+
+      (let [r {:id 0
+               :jsonrpc "2.0"
+               :result
+               {:capabilities
+                {:hoverProvider true}
+
+                :serverInfo
+                {:name "Nightincode"}}}
+
+            r (json/write-str r)
+
+            r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
+
+        (print r)
+
+        (flush)))))
 
 
 (comment
