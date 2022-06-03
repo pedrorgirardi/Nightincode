@@ -18,24 +18,52 @@
 
   (:gen-class))
 
+(defn response [request]
+  (let [{:keys [id]} request]
+    {:id id
+     :jsonrpc "2.0"
+     :result
+     {:capabilities
+      {:hoverProvider true}
+
+      :serverInfo
+      {:name "Nightincode"}}}))
+
+(defn log [s]
+  (spit "Nightincode.log" s :append true))
+
 (defn -main [& _]
-  (while true
-    (let [[_ jsonrpc] (str/split (slurp *in*) #"\r\n\r\n")
+  (let [line-ref (atom nil)
 
-          {:strs [id]} (json/read-str jsonrpc)
+        header-ref (atom [])]
 
-          result (json/write-str {:id id
-                                  :jsonrpc "2.0"
-                                  :result
-                                  {:capabilities
-                                   {:hoverProvider true}
+    (while (reset! line-ref (.readLine *in*))
 
-                                   :serverInfo
-                                   {:name "Nightincode"}}})
+      (log @line-ref)
 
-          result (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes result)) result)]
+      (cond
+        (str/blank? @line-ref)
+        (let [_ (log "Read after blank")
 
-      (pr result))))
+              s (.readLine *in*)
+
+              _ (log (str "After blank - before JSON " s))
+
+              jsonrpc (json/read-str s)
+
+              r (response jsonrpc)
+              r (json/write-str r)
+              r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
+
+          (print r)
+
+          (flush))
+
+        :else
+        (do
+          (log "Append header")
+
+          (swap! header-ref conj @line-ref))))))
 
 
 (comment
@@ -53,13 +81,41 @@
     (.readLine *in*))
 
 
+  (with-in-str (json/write-str {:a 1
+                                :b 2
+                                :c 3})
+    (json/read *in* :key-fn keyword))
+
+
+
+  (let [line-ref (atom nil)
+
+        header-ref (atom [])]
+
+    (with-open [r (LineNumberingPushbackReader.
+                    (StringReader. (str "Foo1: 1\r\nFoo2: 2\r\n\r\n" (json/write-str {:a 1
+                                                                                      :b 2
+                                                                                      :c 3}))))]
+
+      (while (reset! line-ref (.readLine r))
+        (let [s @line-ref]
+          (cond
+            (str/blank? s)
+            (prn @header-ref (json/read r))
+
+            :else
+            (swap! header-ref conj s))))))
+
   (let [line-ref (atom nil)
 
         process-ref (atom {:header []
                            :blank? false})]
 
+
     (with-open [r (LineNumberingPushbackReader.
-                    (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{\"a\": 2}"))]
+                    (StringReader. (str "Foo1: 1\r\nFoo2: 2\r\n\r\n" (json/write-str {:a 1
+                                                                                      :b 2
+                                                                                      :c 3}))))]
 
       (while (reset! line-ref (.readLine r))
         (cond
