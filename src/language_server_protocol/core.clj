@@ -21,7 +21,7 @@
 
 (defn log [& s]
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
-    (spit f (apply str "\nDEBUG " s) :append true)))
+    (spit f (str "\nDEBUG " (str/join " " s)) :append true)))
 
 (defn parse-content-header-string [s]
   ;; Examples:
@@ -54,76 +54,58 @@
       :serverInfo
       {:name "Nightincode"}}}))
 
-
 (defn -main [& _]
-  (let [line-ref (atom nil)
+  (let [char-ref (atom nil)
 
-        process-ref (atom {})
+        process-ref (atom {:newline 0
+                           :header []
+                           :parse-next? false})]
 
-        header-ref (atom [])]
+    (while (not= (reset! char-ref (.read *in*)) -1)
+      (cond
+        ;; Bookkepping of newline - so we know when it's ready to read content.
+        (= (char-name-string @char-ref) "newline")
+        (swap! process-ref update :newline inc)
 
-    (while (reset! line-ref (.readLine *in*))
-      (let [line @line-ref]
-        (cond
-          (str/blank? line)
-          (do
-            (log "BLANK/PARSE NEXT" line)
-            (swap! process-ref assoc :parse-next? true)
-            (print "")
-            (flush))
+        ;; Ready to process content (JSON).
+        (= (:newline @process-ref) 2)
+        nil
 
-          (:parse-next? @process-ref)
-          (let [_ (log "PARSE" line)
-
-                {:keys [content]} (parse-content-header-string line)
-
-                jsonrpc (json/read-str content)
-
-                r (response jsonrpc)
-                r (json/write-str r)
-                r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
-
-            (print r)
-            (flush))
-
-          :else
-          (do
-            (log "HEADER: " line)
-            (swap! header-ref conj line)))))))
+        ;; Construct header one character at a time.
+        :else
+        (swap! process-ref update :header conj (char @char-ref))))))
 
 
 #_(defn -main [& _]
-  (let [counter-ref (atom 0)
+    (let [counter-ref (atom 0)
 
-        line-ref (atom nil)]
+          line-ref (atom nil)]
 
-    (while (reset! line-ref (.readLine *in*))
+      (while (not= (reset! line-ref (.read *in*)) -1)
 
-      (swap! counter-ref inc)
+        (swap! counter-ref inc)
 
-      (log (str "### " @counter-ref " ### ") @line-ref)
+        (log (or (char-name-string (char @line-ref)) (char @line-ref)))
 
-      (let [r {:id 0
-               :jsonrpc "2.0"
-               :result
-               {:capabilities
-                {:hoverProvider true}
+        (let [r {:id 0
+                 :jsonrpc "2.0"
+                 :result
+                 {:capabilities
+                  {:hoverProvider true}
 
-                :serverInfo
-                {:name "Nightincode"}}}
+                  :serverInfo
+                  {:name "Nightincode"}}}
 
-            r (json/write-str r)
+              r (json/write-str r)
 
-            r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
+              r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
 
-        (print r)
+          (print r)
 
-        (flush)))))
+          (flush)))))
 
 
 (comment
-
-
 
   (parse-content-header-string "{}Content-Length: 183")
   ;; => {:header "Content-Length: 183", :content "{}"}
