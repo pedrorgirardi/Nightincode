@@ -57,23 +57,65 @@
 (defn -main [& _]
   (let [char-ref (atom nil)
 
-        process-ref (atom {:newline 0
-                           :header []
-                           :parse-next? false})]
+        parser-state-ref (atom {:chars []
+                                :newline# 0})]
 
     (while (not= (reset! char-ref (.read *in*)) -1)
-      (cond
-        ;; Bookkepping of newline - so we know when it's ready to read content.
-        (= (char-name-string @char-ref) "newline")
-        (swap! process-ref update :newline inc)
+      (let [{:keys [chars newline#]} @parser-state-ref
 
-        ;; Ready to process content (JSON).
-        (= (:newline @process-ref) 2)
-        nil
+            char (char @char-ref)
 
-        ;; Construct header one character at a time.
-        :else
-        (swap! process-ref update :header conj (char @char-ref))))))
+            newline? (= (char-name-string char) "newline")
+
+            chars (conj chars char)]
+
+        (cond
+          ;; Two consecutive newline characters - parse header and content.
+          (and newline? (= newline# 1))
+          (let [header (str/split-lines (apply str chars))
+                header (->> header
+                         (map
+                           (fn [line]
+                             (let [[k v] (str/split line #":")
+
+                                   v (cond
+                                       (= (str/lower-case k) "content-length")
+                                       (parse-long (str/trim v))
+
+                                       :else
+                                       v)]
+
+                               {k v})))
+                         (into {}))
+
+                r {:id 0
+                   :jsonrpc "2.0"
+                   :result
+                   {:capabilities
+                    {:hoverProvider true}
+
+                    :serverInfo
+                    {:name "Nightincode"}}}
+
+                r (json/write-str r)
+
+                r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
+
+            (log header)
+
+            (print r)
+
+            (flush)
+
+            (reset! parser-state-ref {:chars []
+                                      :newline# 0}))
+
+          :else
+          (reset! parser-state-ref {:chars chars
+                                    ;; Reset newline counter when next character is part of the header.
+                                    :newline# (if newline?
+                                                (inc newline#)
+                                                0)}))))))
 
 
 #_(defn -main [& _]
