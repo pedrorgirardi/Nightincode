@@ -169,7 +169,6 @@
                                                                                             :c 3}))))]
 
       (while (not= (reset! char-ref (.read r)) -1)
-
         (swap! parser-state-ref
           (fn [{:keys [chars newline#]}]
             (let [char (char @char-ref)
@@ -197,7 +196,7 @@
                 {:chars chars
                  :newline# (if newline?
                              (inc newline#)
-                             newline#)}))))))
+                             0)}))))))
 
     @parser-state-ref)
 
