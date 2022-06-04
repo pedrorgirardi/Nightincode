@@ -63,14 +63,22 @@
             [k v]))))
     (into {})))
 
-(defn parse-content [header]
-  (let [{:keys [Content-Length]} header
+(defn reads [len]
+  (let [^"[C" buffer (make-array Character/TYPE len)]
+    (loop [off 0]
+      (let [size (.read *in* buffer off (- len off))]
+        (if (<= off len)
+          (String. buffer)
+          (recur size))))))
 
-        writer (StringWriter.)]
+(comment
 
-    (io/copy *in* writer :buffer-size Content-Length)
+  (let [s (json/write-str {:a 1 :b 2 :c 3})]
+    (with-open [r (LineNumberingPushbackReader. (StringReader. s))]
+      (binding [*in* r]
+        (json/read-str (reads (alength (.getBytes s)))))))
 
-    (.toString writer)))
+  )
 
 (defn -main [& _]
   (let [char-ref (atom nil)
@@ -90,13 +98,13 @@
         (cond
           ;; Two consecutive newline characters - parse header and content.
           (and newline? (= newline# 1))
-          (let [header (parse-header chars)
+          (let [{:keys [Content-Length] :as header} (parse-header chars)
 
                 _ (log header)
 
-                jsonrpc (parse-content header)
+                content (reads Content-Length)
 
-                _ (log jsonrpc)
+                _ (log content)
 
                 r {:id 0
                    :jsonrpc "2.0"
