@@ -158,27 +158,48 @@
             :else
             (swap! header-ref conj s))))))
 
-  (let [line-ref (atom nil)
+  (let [char-ref (atom nil)
 
-        process-ref (atom {:header []
-                           :blank? false})]
-
+        parser-state-ref (atom {:chars []
+                                :newline# 0})]
 
     (with-open [r (LineNumberingPushbackReader.
-                    (StringReader. (str "Foo1: 1\r\nFoo2: 2\r\n\r\n" (json/write-str {:a 1
-                                                                                      :b 2
-                                                                                      :c 3}))))]
+                    (StringReader. (str "Header: 1\r\nHeader 2: 2\r\n\r\n" (json/write-str {:a 1
+                                                                                            :b 2
+                                                                                            :c 3}))))]
 
-      (while (reset! line-ref (.readLine r))
-        (cond
-          (:blank? @process-ref)
-          (prn (:header @process-ref) (json/read-str @line-ref))
+      (while (not= (reset! char-ref (.read r)) -1)
 
-          (str/blank? @line-ref)
-          (swap! process-ref assoc :blank? true)
+        (swap! parser-state-ref
+          (fn [{:keys [chars newline#]}]
+            (let [char (char @char-ref)
 
-          :else
-          (swap! process-ref update :header conj @line-ref)))))
+                  newline? (= (char-name-string char) "newline")
+
+                  chars (conj chars char)]
+
+              (cond
+                ;; Two consecutive newline characters.
+                (and newline? (= newline# 1))
+                (let [header (str/split-lines (apply str chars))
+                      header (->> header
+                               (map
+                                 (fn [line]
+                                   (let [[k v] (str/split line #":")]
+                                     {k v})))
+                               (into {}))]
+                  (prn header)
+
+                  {:chars []
+                   :newline# 0})
+
+                :else
+                {:chars chars
+                 :newline# (if newline?
+                             (inc newline#)
+                             newline#)}))))))
+
+    @parser-state-ref)
 
 
   ;; An endpoint is a generic interface that accepts jsonrpc requests and notifications.
