@@ -54,6 +54,22 @@
       :serverInfo
       {:name "Nightincode"}}}))
 
+(defn parse-header [chars]
+  (->> (str/split-lines (apply str chars))
+    (map
+      (fn [line]
+        (let [[k v] (str/split line #":")
+
+              v (cond
+                  (= (str/lower-case k) "content-length")
+                  (parse-long (str/trim v))
+
+                  :else
+                  v)]
+
+          {k v})))
+    (into {})))
+
 (defn -main [& _]
   (let [char-ref (atom nil)
 
@@ -72,21 +88,7 @@
         (cond
           ;; Two consecutive newline characters - parse header and content.
           (and newline? (= newline# 1))
-          (let [header (str/split-lines (apply str chars))
-                header (->> header
-                         (map
-                           (fn [line]
-                             (let [[k v] (str/split line #":")
-
-                                   v (cond
-                                       (= (str/lower-case k) "content-length")
-                                       (parse-long (str/trim v))
-
-                                       :else
-                                       v)]
-
-                               {k v})))
-                         (into {}))
+          (let [header (parse-header chars)
 
                 r {:id 0
                    :jsonrpc "2.0"
@@ -255,30 +257,10 @@
     @parser-state-ref)
 
 
-  ;; An endpoint is a generic interface that accepts jsonrpc requests and notifications.
-  (def endpoint
-    (reify Endpoint
-      (^void notify [_ method parameter]
-       (tap> ['notify method parameter]))
+  (parse-header (char-array "Content-Length: 1\r\nHeader 2: 2\r\n\r\n"))
+  ;; =>
+  {"Content-Length" 1, "Header 2" " 2"}
 
-      (^CompletableFuture request [_ method parameter]
-       (tap> ['request method parameter])
-
-       (CompletableFuture/completedFuture
-         (let [[_ jsonrpc] (str/split (slurp *in*) #"\r\n\r\n")
-
-               {:strs [id]} (json/read-str jsonrpc)
-
-               result (json/write-str {:id id
-                                       :jsonrpc "2.0"
-                                       :result
-                                       {:capabilities
-                                        {:hoverProvider true}
-
-                                        :serverInfo
-                                        {:name "Nightincode"}}})]
-
-           (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes result)) result))))))
 
 
   )
