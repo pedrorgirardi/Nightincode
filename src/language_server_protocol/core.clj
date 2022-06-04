@@ -1,18 +1,14 @@
 (ns language-server-protocol.core
   (:require
    [clojure.string :as str]
-   [clojure.data.json :as json])
+   [clojure.data.json :as json]
+   [clojure.java.io :as io])
 
   (:import
    (java.io
     File
-    StringReader)
-
-   (java.util.concurrent
-    CompletableFuture)
-
-   (org.eclipse.lsp4j.jsonrpc
-    Endpoint)
+    StringReader
+    StringWriter)
 
    (clojure.lang
     LineNumberingPushbackReader))
@@ -67,6 +63,15 @@
             [k v]))))
     (into {})))
 
+(defn parse-content [header]
+  (let [{:keys [Content-Length]} header
+
+        writer (StringWriter.)]
+
+    (io/copy *in* writer :buffer-size Content-Length)
+
+    (.toString writer)))
+
 (defn -main [& _]
   (let [char-ref (atom nil)
 
@@ -87,6 +92,12 @@
           (and newline? (= newline# 1))
           (let [header (parse-header chars)
 
+                _ (log header)
+
+                jsonrpc (parse-content header)
+
+                _ (log jsonrpc)
+
                 r {:id 0
                    :jsonrpc "2.0"
                    :result
@@ -99,8 +110,6 @@
                 r (json/write-str r)
 
                 r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
-
-            (log header)
 
             (print r)
 
