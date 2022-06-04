@@ -58,16 +58,13 @@
   (->> (str/split-lines (apply str chars))
     (map
       (fn [line]
-        (let [[k v] (str/split line #":")
+        (let [[k v] (str/split line #":")]
+          (cond
+            (= (str/lower-case k) "content-length")
+            [:Content-Length (parse-long (str/trim v))]
 
-              v (cond
-                  (= (str/lower-case k) "content-length")
-                  (parse-long (str/trim v))
-
-                  :else
-                  v)]
-
-          {k v})))
+            :else
+            [k v]))))
     (into {})))
 
 (defn -main [& _]
@@ -259,7 +256,7 @@
 
   (parse-header (char-array "Content-Length: 1\r\nHeader 2: 2\r\n\r\n"))
   ;; =>
-  {"Content-Length" 1, "Header 2" " 2"}
+  {:Content-Length 1, "Header 2" " 2"}
 
 
 
