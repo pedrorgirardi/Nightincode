@@ -164,39 +164,50 @@
                                 :newline# 0})]
 
     (with-open [r (LineNumberingPushbackReader.
-                    (StringReader. (str "Header: 1\r\nHeader 2: 2\r\n\r\n" (json/write-str {:a 1
-                                                                                            :b 2
-                                                                                            :c 3}))))]
+                    (StringReader. (str "Content-Length: 1\r\nHeader 2: 2\r\n\r\n"
+                                     (json/write-str {:a 1
+                                                      :b 2
+                                                      :c 3}))))]
 
       (while (not= (reset! char-ref (.read r)) -1)
-        (swap! parser-state-ref
-          (fn [{:keys [chars newline#]}]
-            (let [char (char @char-ref)
 
-                  newline? (= (char-name-string char) "newline")
+        (let [{:keys [chars newline#]} @parser-state-ref
 
-                  chars (conj chars char)]
+              char (char @char-ref)
 
-              (cond
-                ;; Two consecutive newline characters.
-                (and newline? (= newline# 1))
-                (let [header (str/split-lines (apply str chars))
-                      header (->> header
-                               (map
-                                 (fn [line]
-                                   (let [[k v] (str/split line #":")]
-                                     {k v})))
-                               (into {}))]
-                  (prn header)
+              newline? (= (char-name-string char) "newline")
 
-                  {:chars []
-                   :newline# 0})
+              chars (conj chars char)]
 
-                :else
-                {:chars chars
-                 :newline# (if newline?
-                             (inc newline#)
-                             0)}))))))
+          (cond
+            ;; Two consecutive newline characters.
+            (and newline? (= newline# 1))
+            (let [header (str/split-lines (apply str chars))
+                  header (->> header
+                           (map
+                             (fn [line]
+                               (let [[k v] (str/split line #":")
+
+                                     v (cond
+                                         (= (str/lower-case k) "content-length")
+                                         (parse-long (str/trim v))
+
+                                         :else
+                                         v)]
+
+                                 {k v})))
+                           (into {}))]
+
+              (prn header)
+
+              (reset! parser-state-ref {:chars []
+                                        :newline# 0}))
+
+            :else
+            (reset! parser-state-ref {:chars chars
+                                      :newline# (if newline?
+                                                  (inc newline#)
+                                                  0)})))))
 
     @parser-state-ref)
 
