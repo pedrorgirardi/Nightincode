@@ -180,7 +180,7 @@
               chars (conj chars char)]
 
           (cond
-            ;; Two consecutive newline characters.
+            ;; Two consecutive newline characters - parse header and content.
             (and newline? (= newline# 1))
             (let [header (str/split-lines (apply str chars))
                   header (->> header
@@ -205,6 +205,7 @@
 
             :else
             (reset! parser-state-ref {:chars chars
+                                      ;; Reset newline counter when next character is part of the header.
                                       :newline# (if newline?
                                                   (inc newline#)
                                                   0)})))))
