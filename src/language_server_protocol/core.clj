@@ -17,27 +17,7 @@
 
 (defn log [& s]
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
-    (spit f (str "\nDEBUG " (str/join " " s)) :append true)))
-
-(defn parse-content-header-string [s]
-  ;; Examples:
-  ;;
-  ;; (parse-content-header-string "{}Content-Length: 183")
-  ;; => {:header "Content-Length: 183", :content "{}"}
-  ;;
-  ;; (parse-content-header-string "{}")
-  ;; => {:header "", :content "{}"}
-  ;;
-  ;; (parse-content-header-string "{}   ")
-  ;; => {:header "", :content "{}"}
-  ;;
-  ;; (parse-content-header-string "{}       Content-Length: 183")
-  ;; => {:header "Content-Length: 183", :content "{}"}
-
-  ;; Search backwards for the last '}'.
-  (let [last-curly-index (str/last-index-of s "}" (dec (count s)))]
-    {:header (str/triml (subs s (inc last-curly-index)))
-     :content (subs s 0 (inc last-curly-index))}))
+    (spit f (str (str/join " " s) "\n") :append true)))
 
 (defn response [request]
   (let [{:keys [id]} request]
@@ -51,6 +31,8 @@
       {:name "Nightincode"}}}))
 
 (defn parse-header [chars]
+  (log chars)
+
   (->> (str/split-lines (apply str chars))
     (map
       (fn [line]
@@ -66,10 +48,10 @@
 (defn reads [len]
   (let [^"[C" buffer (make-array Character/TYPE len)]
     (loop [off 0]
-      (let [size (.read *in* buffer off (- len off))]
-        (if (<= off len)
+      (let [off' (.read *in* buffer off (- len off))]
+        (if (< off len)
           (String. buffer)
-          (recur size))))))
+          (recur off'))))))
 
 (comment
 
@@ -91,7 +73,7 @@
 
             char (char @char-ref)
 
-            newline? (= (char-name-string char) "newline")
+            newline? (= char \newline)
 
             chars (conj chars char)]
 
@@ -102,7 +84,7 @@
 
                 _ (log header)
 
-                content (reads Content-Length)
+                content (reads (inc Content-Length))
 
                 _ (log content)
 
@@ -134,55 +116,14 @@
                                                 0)}))))))
 
 
-#_(defn -main [& _]
-    (let [counter-ref (atom 0)
-
-          line-ref (atom nil)]
-
-      (while (not= (reset! line-ref (.read *in*)) -1)
-
-        (swap! counter-ref inc)
-
-        (log (or (char-name-string (char @line-ref)) (char @line-ref)))
-
-        (let [r {:id 0
-                 :jsonrpc "2.0"
-                 :result
-                 {:capabilities
-                  {:hoverProvider true}
-
-                  :serverInfo
-                  {:name "Nightincode"}}}
-
-              r (json/write-str r)
-
-              r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
-
-          (print r)
-
-          (flush)))))
-
-
 (comment
-
-  (parse-content-header-string "{}Content-Length: 183")
-  ;; => {:header "Content-Length: 183", :content "{}"}
-
-  (parse-content-header-string "{}")
-  ;; => {:header "", :content "{}"}
-
-  (parse-content-header-string "{}   ")
-  ;; => {:header "", :content "{}"}
-
-  (parse-content-header-string "{}       Content-Length: 183")
-  ;; => {:header "Content-Length: 183", :content "{}"}
-
 
   (def r
     (LineNumberingPushbackReader.
       (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{}")))
 
-  (.readLine r)
+  (char (.read r))
+
 
   (with-in-str "Foo1: 1\r\nFoo2: 1\r\n"
     (.readLine *in*))
