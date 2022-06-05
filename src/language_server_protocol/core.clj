@@ -66,9 +66,17 @@
                                      :serverInfo
                                      {:name "Nightincode"}}))
 
+   ;; The hover request is sent from the client to the server to request hover information at a given text document position.
+   ;;
    ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
    "textDocument/hover" (fn [jsonrpc]
                           (response jsonrpc nil))
+
+   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
+   ;;
+   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+   "textDocument/completion" (fn [jsonrpc]
+                               (response jsonrpc nil))
 
    "$/cancelRequest" (fn [jsonrpc]
                        (response jsonrpc nil))})
