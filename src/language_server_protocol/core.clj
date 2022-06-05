@@ -69,22 +69,15 @@
                                 :newline# 0})]
 
     (while (not= (reset! char-ref (.read *in*)) -1)
-      (let [{:keys [chars newline#]} @parser-state-ref
-
-            char (char @char-ref)
-
-            newline? (= char \newline)
-
-            chars (conj chars char)]
-
+      (let [{:keys [chars newline#]} @parser-state-ref]
         (cond
           ;; Two consecutive newline characters - parse header and content.
-          (and newline? (= newline# 1))
+          (= newline# 2)
           (let [{:keys [Content-Length] :as header} (parse-header chars)
 
                 _ (log header)
 
-                content (reads (inc Content-Length))
+                content (reads Content-Length)
 
                 _ (log content)
 
@@ -98,7 +91,6 @@
                     {:name "Nightincode"}}}
 
                 r (json/write-str r)
-
                 r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
 
             (print r)
@@ -109,9 +101,9 @@
                                       :newline# 0}))
 
           :else
-          (reset! parser-state-ref {:chars chars
+          (reset! parser-state-ref {:chars (conj chars (char @char-ref))
                                     ;; Reset newline counter when next character is part of the header.
-                                    :newline# (if newline?
+                                    :newline# (if (= (char @char-ref) \newline)
                                                 (inc newline#)
                                                 0)}))))))
 
