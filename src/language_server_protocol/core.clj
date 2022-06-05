@@ -24,7 +24,7 @@
      :jsonrpc "2.0"
      :result result}))
 
-(defn parse-header [chars]
+(defn header [chars]
   (->> (str/split-lines (apply str chars))
     (map
       (fn [line]
@@ -90,7 +90,7 @@
         (cond
           ;; Two consecutive newline characters - parse header and content.
           (= newline# 2)
-          (let [{:keys [Content-Length] :as header} (parse-header chars)
+          (let [{:keys [Content-Length]} (header chars)
 
                 ;; Increment len to account for \newline before content.
                 ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
