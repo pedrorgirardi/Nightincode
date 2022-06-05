@@ -18,13 +18,6 @@
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
     (spit f (str (str/join " " s) "\n") :append true)))
 
-(def N
-  "A set of Notification method names."
-  #{"$/cancelRequest"
-    "initialized"
-    "textDocument/didOpen"
-    "textDocument/didClose"})
-
 (defn response [jsonrpc result]
   (let [{:keys [id]} jsonrpc]
     {:id id
@@ -99,23 +92,26 @@
                 ;; Increment len to account for \newline before content.
                 ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
                 jsonrpc-str (reads (inc Content-Length))
-                {:keys [method] :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)]
+
+                {jsonrpc-id :id
+                 jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)]
 
             (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
-            (when-let [handler (method->handler method)]
+            (when-let [handler (method->handler jsonrpc-method)]
               (let [handled (handler jsonrpc)]
 
                 (log (with-out-str (pprint/pprint handled)))
 
                 ;; Don't send a response back for a notification.
+                ;; (It's assumed that only requests have ID.)
                 ;;
                 ;; > Every processed request must send a response back to the sender of the request.
                 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
                 ;;
                 ;; > A processed notification message must not send a response back. They work like events.
                 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
-                (when-not (contains? N method)
+                (when jsonrpc-id
                   (let [response-str (json/write-str handled)
                         response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
 
