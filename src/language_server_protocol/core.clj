@@ -47,10 +47,21 @@
 
 (def method->handler
   {;; The initialize request is sent as the first request from the client to the server.
+   ;;
    ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
    "initialize" (fn [jsonrpc]
                   (response jsonrpc {:capabilities
-                                     {:hoverProvider true}
+                                     {;; Defines how the host (editor) should sync document changes to the language server.
+                                      ;;
+                                      ;; 0: Documents should not be synced at all.
+                                      ;; 1: Documents are synced by always sending the full content of the document.
+                                      ;; 2: Documents are synced by sending the full content on open.
+                                      ;;    After that only incremental updates to the document are send.
+                                      ;;
+                                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
+                                      :textDocumentSync 1
+                                      :hoverProvider true
+                                      :completionProvider {}}
 
                                      :serverInfo
                                      {:name "Nightincode"}}))
