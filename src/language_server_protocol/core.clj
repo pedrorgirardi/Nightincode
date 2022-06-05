@@ -18,6 +18,13 @@
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
     (spit f (str (str/join " " s) "\n") :append true)))
 
+(def N
+  "A set of Notification method names."
+  #{"$/cancelRequest"
+    "initialized"
+    "textDocument/didOpen"
+    "textDocument/didClose"})
+
 (defn response [jsonrpc result]
   (let [{:keys [id]} jsonrpc]
     {:id id
@@ -76,10 +83,7 @@
    ;;
    ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
    "textDocument/completion" (fn [jsonrpc]
-                               (response jsonrpc nil))
-
-   "$/cancelRequest" (fn [jsonrpc]
-                       (response jsonrpc nil))})
+                               (response jsonrpc nil))})
 
 (defn -main [& _]
   (let [parser-state-ref (atom {:eof? false
@@ -95,21 +99,29 @@
                 ;; Increment len to account for \newline before content.
                 ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
                 jsonrpc-str (reads (inc Content-Length))
-                jsonrpc (json/read-str jsonrpc-str :key-fn keyword)]
+                {:keys [method] :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)]
 
-            (log (with-out-str (pprint/pprint jsonrpc)))
+            (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
-            (when-let [handler (method->handler (:method jsonrpc))]
-              (let [response (handler jsonrpc)
+            (when-let [handler (method->handler method)]
+              (let [handled (handler jsonrpc)]
 
-                    response-str (json/write-str response)
-                    response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+                (log (with-out-str (pprint/pprint handled)))
 
-                (log (with-out-str (pprint/pprint response)))
+                ;; Don't send a response back for a notification.
+                ;;
+                ;; > Every processed request must send a response back to the sender of the request.
+                ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
+                ;;
+                ;; > A processed notification message must not send a response back. They work like events.
+                ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
+                (when-not (contains? N method)
+                  (let [response-str (json/write-str handled)
+                        response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
 
-                (print response-str)
+                    (print response-str)
 
-                (flush)))
+                    (flush)))))
 
             (reset! parser-state-ref {:chars []
                                       :newline# 0}))
