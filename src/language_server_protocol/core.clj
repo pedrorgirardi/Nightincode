@@ -31,8 +31,6 @@
       {:name "Nightincode"}}}))
 
 (defn parse-header [chars]
-  (log chars)
-
   (->> (str/split-lines (apply str chars))
     (map
       (fn [line]
@@ -75,11 +73,17 @@
           (= newline# 2)
           (let [{:keys [Content-Length] :as header} (parse-header chars)
 
-                _ (log header)
+                _ (log (char @char-ref))
 
-                content (reads Content-Length)
+                _ (.unread *in* @char-ref)
 
-                _ (log content)
+                jsonrpc-str (reads Content-Length)
+
+                _ (log "JSON RPC STRING" jsonrpc-str)
+
+                jsonrpc (json/read-str jsonrpc-str :key-fn keyword)
+
+                _ (log "JSON RPC" jsonrpc)
 
                 r {:id 0
                    :jsonrpc "2.0"
