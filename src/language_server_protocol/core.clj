@@ -2,13 +2,12 @@
   (:require
    [clojure.string :as str]
    [clojure.data.json :as json]
-   [clojure.java.io :as io])
+   [clojure.pprint :as pprint])
 
   (:import
    (java.io
     File
-    StringReader
-    StringWriter)
+    StringReader)
 
    (clojure.lang
     LineNumberingPushbackReader))
@@ -51,39 +50,21 @@
           (String. buffer)
           (recur off'))))))
 
-(comment
-
-  (let [s (json/write-str {:a 1 :b 2 :c 3})]
-    (with-open [r (LineNumberingPushbackReader. (StringReader. s))]
-      (binding [*in* r]
-        (json/read-str (reads (alength (.getBytes s)))))))
-
-  )
-
 (defn -main [& _]
-  (let [char-ref (atom nil)
-
-        parser-state-ref (atom {:chars []
+  (let [parser-state-ref (atom {:eof? false
+                                :chars []
                                 :newline# 0})]
-
-    (while (not= (reset! char-ref (.read *in*)) -1)
+    (while (not (:eof?  @parser-state-ref))
       (let [{:keys [chars newline#]} @parser-state-ref]
         (cond
           ;; Two consecutive newline characters - parse header and content.
           (= newline# 2)
           (let [{:keys [Content-Length] :as header} (parse-header chars)
 
-                _ (log (char @char-ref))
-
-                _ (.unread *in* @char-ref)
-
-                jsonrpc-str (reads Content-Length)
-
-                _ (log "JSON RPC STRING" jsonrpc-str)
-
+                ;; Increment len to account for \newline before content.
+                ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
+                jsonrpc-str (reads (inc Content-Length))
                 jsonrpc (json/read-str jsonrpc-str :key-fn keyword)
-
-                _ (log "JSON RPC" jsonrpc)
 
                 r {:id 0
                    :jsonrpc "2.0"
@@ -97,6 +78,8 @@
                 r (json/write-str r)
                 r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
 
+            (log (with-out-str (pprint/pprint jsonrpc)))
+
             (print r)
 
             (flush)
@@ -105,11 +88,13 @@
                                       :newline# 0}))
 
           :else
-          (reset! parser-state-ref {:chars (conj chars (char @char-ref))
-                                    ;; Reset newline counter when next character is part of the header.
-                                    :newline# (if (= (char @char-ref) \newline)
-                                                (inc newline#)
-                                                0)}))))))
+          (let [c (.read *in*)]
+            (reset! parser-state-ref {:eof? (= c -1)
+                                      :chars (conj chars (char c))
+                                      ;; Reset newline counter when next character is part of the header.
+                                      :newline# (if (= (char c) \newline)
+                                                  (inc newline#)
+                                                  0)})))))))
 
 
 (comment
