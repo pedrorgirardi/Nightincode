@@ -79,11 +79,11 @@
                                (response jsonrpc nil))})
 
 (defn -main [& _]
-  (let [parser-state-ref (atom {:eof? false
-                                :chars []
-                                :newline# 0})]
-    (while (not (:eof?  @parser-state-ref))
-      (let [{:keys [chars newline#]} @parser-state-ref]
+  (let [state-ref (atom {:eof? false
+                         :chars []
+                         :newline# 0})]
+    (while (not (:eof?  @state-ref))
+      (let [{:keys [chars newline#]} @state-ref]
         (cond
           ;; Two consecutive newline characters - parse header and content.
           (= newline# 2)
@@ -119,17 +119,17 @@
 
                     (flush)))))
 
-            (reset! parser-state-ref {:chars []
-                                      :newline# 0}))
+            (reset! state-ref {:chars []
+                               :newline# 0}))
 
           :else
           (let [c (.read *in*)]
-            (reset! parser-state-ref {:eof? (= c -1)
-                                      :chars (conj chars (char c))
-                                      ;; Reset newline counter when next character is part of the header.
-                                      :newline# (if (= (char c) \newline)
-                                                  (inc newline#)
-                                                  0)})))))))
+            (reset! state-ref {:eof? (= c -1)
+                               :chars (conj chars (char c))
+                               ;; Reset newline counter when next character is part of the header.
+                               :newline# (if (= (char c) \newline)
+                                           (inc newline#)
+                                           0)})))))))
 
 
 (comment
