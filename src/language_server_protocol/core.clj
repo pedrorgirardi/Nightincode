@@ -18,16 +18,11 @@
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
     (spit f (str (str/join " " s) "\n") :append true)))
 
-(defn response [request]
-  (let [{:keys [id]} request]
+(defn response [jsonrpc result]
+  (let [{:keys [id]} jsonrpc]
     {:id id
      :jsonrpc "2.0"
-     :result
-     {:capabilities
-      {:hoverProvider true}
-
-      :serverInfo
-      {:name "Nightincode"}}}))
+     :result result}))
 
 (defn parse-header [chars]
   (->> (str/split-lines (apply str chars))
@@ -50,6 +45,23 @@
           (String. buffer)
           (recur off'))))))
 
+(def method->handler
+  {;; The initialize request is sent as the first request from the client to the server.
+   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
+   "initialize" (fn [jsonrpc]
+                  (response jsonrpc {:capabilities
+                                     {:hoverProvider true}
+
+                                     :serverInfo
+                                     {:name "Nightincode"}}))
+
+   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
+   "textDocument/hover" (fn [jsonrpc]
+                          (response jsonrpc nil))
+
+   "$/cancelRequest" (fn [jsonrpc]
+                       (response jsonrpc nil))})
+
 (defn -main [& _]
   (let [parser-state-ref (atom {:eof? false
                                 :chars []
@@ -64,25 +76,21 @@
                 ;; Increment len to account for \newline before content.
                 ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
                 jsonrpc-str (reads (inc Content-Length))
-                jsonrpc (json/read-str jsonrpc-str :key-fn keyword)
-
-                r {:id 0
-                   :jsonrpc "2.0"
-                   :result
-                   {:capabilities
-                    {:hoverProvider true}
-
-                    :serverInfo
-                    {:name "Nightincode"}}}
-
-                r (json/write-str r)
-                r (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes r)) r)]
+                jsonrpc (json/read-str jsonrpc-str :key-fn keyword)]
 
             (log (with-out-str (pprint/pprint jsonrpc)))
 
-            (print r)
+            (when-let [handler (method->handler (:method jsonrpc))]
+              (let [response (handler jsonrpc)
 
-            (flush)
+                    response-str (json/write-str response)
+                    response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+
+                (log (with-out-str (pprint/pprint response)))
+
+                (print response-str)
+
+                (flush)))
 
             (reset! parser-state-ref {:chars []
                                       :newline# 0}))
