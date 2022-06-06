@@ -45,7 +45,7 @@
           (String. buffer)
           (recur off'))))))
 
-(def method->handler
+(def default-implementation
   {;; The initialize request is sent as the first request from the client to the server.
    ;;
    ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
@@ -61,10 +61,7 @@
                                       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
                                       :textDocumentSync 1
                                       :hoverProvider true
-                                      :completionProvider {}}
-
-                                     :serverInfo
-                                     {:name "Nightincode"}}))
+                                      :completionProvider {}}}))
 
    ;; The hover request is sent from the client to the server to request hover information at a given text document position.
    ;;
@@ -78,7 +75,7 @@
    "textDocument/completion" (fn [jsonrpc]
                                (response jsonrpc nil))})
 
-(defn -main [& _]
+(defn start [{:keys [method->handler]}]
   (let [state-ref (atom {:eof? false
                          :chars []
                          :newline# 0})]
@@ -94,30 +91,33 @@
                 jsonrpc-str (reads (inc Content-Length))
 
                 {jsonrpc-id :id
-                 jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)]
+                 jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
+                handler (or (method->handler jsonrpc-method) (constantly nil))
+
+                handled (handler jsonrpc)]
+
+            ;; Input
             (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
-            (when-let [handler (method->handler jsonrpc-method)]
-              (let [handled (handler jsonrpc)]
+            ;; Output
+            (log (with-out-str (pprint/pprint handled)))
 
-                (log (with-out-str (pprint/pprint handled)))
+            ;; Don't send a response back for a notification.
+            ;; (It's assumed that only requests have ID.)
+            ;;
+            ;; > Every processed request must send a response back to the sender of the request.
+            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
+            ;;
+            ;; > A processed notification message must not send a response back. They work like events.
+            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
+            (when jsonrpc-id
+              (let [response-str (json/write-str handled)
+                    response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
 
-                ;; Don't send a response back for a notification.
-                ;; (It's assumed that only requests have ID.)
-                ;;
-                ;; > Every processed request must send a response back to the sender of the request.
-                ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
-                ;;
-                ;; > A processed notification message must not send a response back. They work like events.
-                ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
-                (when jsonrpc-id
-                  (let [response-str (json/write-str handled)
-                        response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+                (print response-str)
 
-                    (print response-str)
-
-                    (flush)))))
+                (flush)))
 
             (reset! state-ref {:chars []
                                :newline# 0}))
@@ -130,7 +130,6 @@
                                :newline# (if (= (char c) \newline)
                                            (inc newline#)
                                            0)})))))))
-
 
 (comment
 
