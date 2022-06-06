@@ -117,4 +117,48 @@
   (char (.read r))
 
 
+  (defn rpc
+  [^java.io.Reader in ^java.io.Writer out]
+  (loop []
+    (let [recur? (try
+                   (let [header (.readLine in)
+                         ;; TODO: Actually parse header
+                         len (parse-long (str/trim (second (str/split header #":"))))]
+                     ;; Discard empty line
+                     (.readLine in)
+                     (let [buf (make-array Character/TYPE len)
+                           chars-read (.read in buf 0 len)]
+                       (if (neg? chars-read)
+                         :eof
+                         (let [message {:header header :content (json/read-str (String. buf))}]
+                           (tap> [:actually-handle-message message])
+                           (.write out (format "Handled message %s\n" (pr-str message)))
+                           (.flush out)
+                           true))))
+                   (catch java.io.IOException _
+                     ;; Stream closed
+                     (tap> :exit)
+                     false))]
+      (when recur? (recur)))))
+
+  (import '(java.io BufferedReader BufferedWriter PipedReader PipedWriter))
+
+  (with-open [pipe-in (PipedWriter.)
+              in-writer (BufferedWriter. pipe-in)
+              in (BufferedReader. (PipedReader. pipe-in))
+              pipe-out (PipedReader.)
+              out-reader (BufferedReader. pipe-out)
+              out (BufferedWriter. (PipedWriter. pipe-out))]
+    (let [f (future (rpc in out))
+          message (json/write-str {"jsonrpc" "2.0" "id" 1 "method" "textDocument/didOpen" "params" {}})]
+      (try
+        ;; `count` is probably the wrong way to calculate the length of the message?
+        (.write in-writer (format "Content-Length: %d\r\n\r\n" (count message)))
+        (.write in-writer message)
+        (.flush in-writer)
+        (tap> (.readLine out-reader))
+        (catch Throwable _
+          (future-cancel f)))))
+
+
   )
