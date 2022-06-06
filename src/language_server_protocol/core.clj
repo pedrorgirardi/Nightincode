@@ -8,19 +8,12 @@
    (java.io
     File
     Reader
-    StringReader
 
     InputStreamReader
     OutputStreamWriter
 
     BufferedReader
-    BufferedWriter
-
-    PipedReader
-    PipedWriter)
-
-   (clojure.lang
-    LineNumberingPushbackReader))
+    BufferedWriter))
 
   (:gen-class))
 
