@@ -76,47 +76,51 @@
 (def clojuredocs-completion-delay
   (delay (clojuredocs-completion)))
 
-(def method->handler
-  {;; The initialize request is sent as the first request from the client to the server.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
-   "initialize"
-   (fn [jsonrpc]
-     (lsp/response jsonrpc {:capabilities
-                            {;; Defines how the host (editor) should sync document changes to the language server.
-                             ;;
-                             ;; 0: Documents should not be synced at all.
-                             ;; 1: Documents are synced by always sending the full content of the document.
-                             ;; 2: Documents are synced by sending the full content on open.
-                             ;;    After that only incremental updates to the document are send.
-                             ;;
-                             ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
-                             :textDocumentSync 1
-                             :hoverProvider true
-                             :completionProvider {}}
+(defmethod lsp/handle "initialize" [jsonrpc]
 
-                            :serverInfo
-                            {:name "Nightincode"}}))
+  ;; The initialize request is sent as the first request from the client to the server.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
-   "textDocument/didOpen"
-   (fn [jsonrpc]
-     (let [textDocument (get-in jsonrpc [:params :textDocument])
+  (lsp/response jsonrpc
+    {:capabilities
+     {;; Defines how the host (editor) should sync document changes to the language server.
+      ;;
+      ;; 0: Documents should not be synced at all.
+      ;; 1: Documents are synced by always sending the full content of the document.
+      ;; 2: Documents are synced by sending the full content on open.
+      ;;    After that only incremental updates to the document are send.
+      ;;
+      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
+      :textDocumentSync 1
+      :hoverProvider true
+      :completionProvider {}}
 
-           result (analyze-document textDocument)
-           result (select-keys result [:findings :analysis :summary])]
+     :serverInfo
+     {:name "Nightincode"}}))
 
-       (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
+(defmethod lsp/handle "textDocument/didOpen" [jsonrpc]
 
+  ;; The document open notification is sent from the client to the server to signal newly opened text documents.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-   "textDocument/completion"
-   (fn [jsonrpc]
-     (lsp/response jsonrpc @clojuredocs-completion-delay))})
+  (let [textDocument (get-in jsonrpc [:params :textDocument])
 
-(defn start
-  [{:keys [method->handler]}]
+        result (analyze-document textDocument)
+        result (select-keys result [:findings :analysis :summary])]
+
+    (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
+
+(defmethod lsp/handle "textDocument/completion" [jsonrpc]
+
+  ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+
+  (lsp/response jsonrpc @clojuredocs-completion-delay))
+
+(defn start []
   (let [socket-port (with-open [socket (ServerSocket. 0)]
                       (.getLocalPort socket))]
     (start-server
@@ -127,12 +131,12 @@
     (doto
       (Thread.
         (fn []
-          (lsp/start {:method->handler method->handler})))
+          (lsp/start {})))
       (.start))
 
     (swap! state-ref assoc
       :REPL/port socket-port)))
 
 (defn -main [& _]
-  (start {:method->handler #'method->handler}))
+  (start))
 

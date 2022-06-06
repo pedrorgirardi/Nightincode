@@ -21,6 +21,19 @@
 (defn response [request result]
   (merge (select-keys request [:id :jsonrpc]) {:result result}))
 
+
+;; --------------------------------
+
+
+(defmulti handle :method)
+
+(defmethod handle :default [jsonrpc]
+  (response jsonrpc nil))
+
+
+;; --------------------------------
+
+
 (defn header [chars]
   (->> (str/split-lines (apply str chars))
     (map
@@ -42,10 +55,7 @@
           (String. buffer)
           (recur off'))))))
 
-(defn default-handler [jsonrpc]
-  (response jsonrpc nil))
-
-(defn start [{:keys [method->handler]}]
+(defn start [_]
   (let [state-ref (atom {:eof? false
                          :chars []
                          :newline# 0})]
@@ -60,12 +70,9 @@
                 ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
                 jsonrpc-str (reads (inc Content-Length))
 
-                {jsonrpc-id :id
-                 jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
+                {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-                handler (or (method->handler jsonrpc-method) default-handler)
-
-                handled (handler jsonrpc)]
+                handled (handle jsonrpc)]
 
             ;; Input
             (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
