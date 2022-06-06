@@ -7,7 +7,17 @@
   (:import
    (java.io
     File
-    StringReader)
+    Reader
+    StringReader
+
+    InputStreamReader
+    OutputStreamWriter
+
+    BufferedReader
+    BufferedWriter
+
+    PipedReader
+    PipedWriter)
 
    (clojure.lang
     LineNumberingPushbackReader))
@@ -47,28 +57,32 @@
             [k v]))))
     (into {})))
 
-(defn reads [len]
+(defn reads [^Reader reader len]
   (let [^"[C" buffer (make-array Character/TYPE len)]
     (loop [off 0]
-      (let [off' (.read *in* buffer off (- len off))]
+      (let [off' (.read reader buffer off (- len off))]
         (if (< off len)
           (String. buffer)
           (recur off'))))))
 
-(defn start [_]
+(defn start [{:keys [in out]}]
   (let [state-ref (atom {:eof? false
                          :chars []
-                         :newline# 0})]
+                         :newline# 0
+                         :return# 0})
+
+        ^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
+
+        ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))]
+
     (while (not (:eof?  @state-ref))
-      (let [{:keys [chars newline#]} @state-ref]
+      (let [{:keys [chars newline# return#]} @state-ref]
         (cond
-          ;; Two consecutive newline characters - parse header and content.
-          (= newline# 2)
+          ;; Two consecutive return & newline characters - parse header and content.
+          (and (= return# 2) (= newline# 2))
           (let [{:keys [Content-Length]} (header chars)
 
-                ;; Increment len to account for \newline before content.
-                ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
-                jsonrpc-str (reads (inc Content-Length))
+                jsonrpc-str (reads reader Content-Length)
 
                 {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
@@ -91,22 +105,28 @@
             (when jsonrpc-id
               (let [response-str (json/write-str handled)
                     response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
-
-                (print response-str)
-
-                (flush)))
+                (.write writer response-str)
+                (.flush writer)))
 
             (reset! state-ref {:chars []
+                               :return# 0
                                :newline# 0}))
 
           :else
-          (let [c (.read *in*)]
-            (reset! state-ref {:eof? (= c -1)
-                               :chars (conj chars (char c))
-                               ;; Reset newline counter when next character is part of the header.
-                               :newline# (if (= (char c) \newline)
-                                           (inc newline#)
-                                           0)})))))))
+          (let [c (.read reader)]
+            (swap! state-ref merge (merge {:eof? (= c -1)
+                                           :chars (conj chars (char c))}
+                                     (cond
+                                       (= (char c) \newline)
+                                       {:newline# (inc newline#)}
+
+                                       (= (char c) \return)
+                                       {:return# (inc return#)}
+
+                                       ;; Reset return & newline counter when next character is part of the header.
+                                       :else
+                                       {:return# 0
+                                        :newline# 0})))))))))
 
 (comment
 
@@ -146,6 +166,7 @@
   (with-open [pipe-in (PipedWriter.)
               in-writer (BufferedWriter. pipe-in)
               in (BufferedReader. (PipedReader. pipe-in))
+
               pipe-out (PipedReader.)
               out-reader (BufferedReader. pipe-out)
               out (BufferedWriter. (PipedWriter. pipe-out))]

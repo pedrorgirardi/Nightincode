@@ -120,7 +120,7 @@
 
   (lsp/response jsonrpc @clojuredocs-completion-delay))
 
-(defn start []
+(defn start [config]
   (let [socket-port (with-open [socket (ServerSocket. 0)]
                       (.getLocalPort socket))]
     (start-server
@@ -131,12 +131,14 @@
     (doto
       (Thread.
         (fn []
-          (lsp/start {})))
+          (lsp/start (select-keys config [:in :out]))))
       (.start))
 
     (swap! state-ref assoc
       :REPL/port socket-port)))
 
 (defn -main [& _]
-  (start))
+  (start
+    {:in System/in
+     :out System/out}))
 
