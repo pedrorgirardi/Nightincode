@@ -71,7 +71,7 @@
             (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
             ;; Output
-            (log (with-out-str (pprint/pprint handled)))
+            (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
 
             ;; Don't send a response back for a notification.
             ;; (It's assumed that only requests have ID.)

@@ -45,10 +45,10 @@
      {:lint [(text-document-path textDocument)]
       :config config})))
 
-
-(def clojuredocs
+(defn clojuredocs
   "ClojureDocs.org database."
-  (delay (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword)))
+  []
+  (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword))
 
 (defn clojuredocs-completion []
   (into []
@@ -71,7 +71,10 @@
             {:label (:name m)
              :kind (completion-item-kind (:type m))
              :detail detail}))))
-    (:vars @clojuredocs)))
+    (:vars (clojuredocs))))
+
+(def clojuredocs-completion-delay
+  (delay (clojuredocs-completion)))
 
 (def method->handler
   {;; The initialize request is sent as the first request from the client to the server.
@@ -110,7 +113,7 @@
    ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
    "textDocument/completion"
    (fn [jsonrpc]
-     (lsp/response jsonrpc (clojuredocs-completion)))})
+     (lsp/response jsonrpc @clojuredocs-completion-delay))})
 
 (defn start
   [{:keys [method->handler]}]
