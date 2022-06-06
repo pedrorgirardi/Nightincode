@@ -66,100 +66,90 @@
           (recur off'))))))
 
 (defn start [{:keys [in out]}]
-  (let [state-ref (atom {:eof? false
-                         :chars []
-                         :newline# 0
-                         :return# 0})
+  (let [^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
 
-        ^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
+        ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))
 
-        ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))]
+        initial-state {:chars []
+                       :newline# 0
+                       :return# 0}]
 
-    (while (not (:eof?  @state-ref))
-      (let [{:keys [chars newline# return#]} @state-ref]
-        (cond
-          ;; Two consecutive return & newline characters - parse header and content.
-          (and (= return# 2) (= newline# 2))
-          (let [{:keys [Content-Length]} (header chars)
+    (loop [{:keys [chars newline# return#] :as state} initial-state]
+      (cond
+        ;; Two consecutive return & newline characters - parse header and content.
+        (and (= return# 2) (= newline# 2))
+        (let [{:keys [Content-Length]} (header chars)
 
-                jsonrpc-str (reads reader Content-Length)
+              jsonrpc-str (reads reader Content-Length)
 
-                {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
+              {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-                handled (handle jsonrpc)]
+              handled (handle jsonrpc)]
 
-            ;; Input
-            (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
+          ;; Input
+          (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
-            ;; Output
-            (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
+          ;; Output
+          (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
 
-            ;; Don't send a response back for a notification.
-            ;; (It's assumed that only requests have ID.)
-            ;;
-            ;; > Every processed request must send a response back to the sender of the request.
-            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
-            ;;
-            ;; > A processed notification message must not send a response back. They work like events.
-            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
-            (when jsonrpc-id
-              (let [response-str (json/write-str handled)
-                    response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
-                (.write writer response-str)
-                (.flush writer)))
+          ;; Don't send a response back for a notification.
+          ;; (It's assumed that only requests have ID.)
+          ;;
+          ;; > Every processed request must send a response back to the sender of the request.
+          ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
+          ;;
+          ;; > A processed notification message must not send a response back. They work like events.
+          ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
+          (when jsonrpc-id
+            (let [response-str (json/write-str handled)
+                  response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+              (.write writer response-str)
+              (.flush writer)))
 
-            (reset! state-ref {:chars []
-                               :return# 0
-                               :newline# 0}))
+          (recur initial-state))
 
-          :else
-          (let [c (.read reader)]
-            (swap! state-ref merge (merge {:eof? (= c -1)
-                                           :chars (conj chars (char c))}
-                                     (cond
-                                       (= (char c) \newline)
-                                       {:newline# (inc newline#)}
+        :else
+        (let [c (.read reader)]
+          (when-not (= c -1)
+            (recur (merge state {:chars (conj chars (char c))}
+                     (cond
+                       (= (char c) \newline)
+                       {:newline# (inc newline#)}
 
-                                       (= (char c) \return)
-                                       {:return# (inc return#)}
+                       (= (char c) \return)
+                       {:return# (inc return#)}
 
-                                       ;; Reset return & newline counter when next character is part of the header.
-                                       :else
-                                       {:return# 0
-                                        :newline# 0})))))))))
+                       ;; Reset return & newline counter when next character is part of the header.
+                       :else
+                       {:return# 0
+                        :newline# 0})))))))))
 
 (comment
 
-  (def r
-    (LineNumberingPushbackReader.
-      (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{}")))
-
-  (char (.read r))
-
 
   (defn rpc
-  [^java.io.Reader in ^java.io.Writer out]
-  (loop []
-    (let [recur? (try
-                   (let [header (.readLine in)
-                         ;; TODO: Actually parse header
-                         len (parse-long (str/trim (second (str/split header #":"))))]
-                     ;; Discard empty line
-                     (.readLine in)
-                     (let [buf (make-array Character/TYPE len)
-                           chars-read (.read in buf 0 len)]
-                       (if (neg? chars-read)
-                         :eof
-                         (let [message {:header header :content (json/read-str (String. buf))}]
-                           (tap> [:actually-handle-message message])
-                           (.write out (format "Handled message %s\n" (pr-str message)))
-                           (.flush out)
-                           true))))
-                   (catch java.io.IOException _
-                     ;; Stream closed
-                     (tap> :exit)
-                     false))]
-      (when recur? (recur)))))
+    [^java.io.Reader in ^java.io.Writer out]
+    (loop []
+      (let [recur? (try
+                     (let [header (.readLine in)
+                           ;; TODO: Actually parse header
+                           len (parse-long (str/trim (second (str/split header #":"))))]
+                       ;; Discard empty line
+                       (.readLine in)
+                       (let [buf (make-array Character/TYPE len)
+                             chars-read (.read in buf 0 len)]
+                         (if (neg? chars-read)
+                           :eof
+                           (let [message {:header header :content (json/read-str (String. buf))}]
+                             (tap> [:actually-handle-message message])
+                             (.write out (format "Handled message %s\n" (pr-str message)))
+                             (.flush out)
+                             true))))
+                     (catch java.io.IOException _
+                       ;; Stream closed
+                       (tap> :exit)
+                       false))]
+        (when recur? (recur)))))
 
   (import '(java.io BufferedReader BufferedWriter PipedReader PipedWriter))
 
