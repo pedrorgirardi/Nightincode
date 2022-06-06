@@ -45,35 +45,8 @@
           (String. buffer)
           (recur off'))))))
 
-(def default-implementation
-  {;; The initialize request is sent as the first request from the client to the server.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
-   "initialize" (fn [jsonrpc]
-                  (response jsonrpc {:capabilities
-                                     {;; Defines how the host (editor) should sync document changes to the language server.
-                                      ;;
-                                      ;; 0: Documents should not be synced at all.
-                                      ;; 1: Documents are synced by always sending the full content of the document.
-                                      ;; 2: Documents are synced by sending the full content on open.
-                                      ;;    After that only incremental updates to the document are send.
-                                      ;;
-                                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
-                                      :textDocumentSync 1
-                                      :hoverProvider true
-                                      :completionProvider {}}}))
-
-   ;; The hover request is sent from the client to the server to request hover information at a given text document position.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
-   "textDocument/hover" (fn [jsonrpc]
-                          (response jsonrpc nil))
-
-   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-   "textDocument/completion" (fn [jsonrpc]
-                               (response jsonrpc nil))})
+(defn default-handler [jsonrpc]
+  (response jsonrpc nil))
 
 (defn start [{:keys [method->handler]}]
   (let [state-ref (atom {:eof? false
@@ -93,7 +66,7 @@
                 {jsonrpc-id :id
                  jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-                handler (or (method->handler jsonrpc-method) (constantly nil))
+                handler (or (method->handler jsonrpc-method) default-handler)
 
                 handled (handler jsonrpc)]
 
