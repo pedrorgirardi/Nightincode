@@ -18,11 +18,8 @@
   (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
     (spit f (str (str/join " " s) "\n") :append true)))
 
-(defn response [jsonrpc result]
-  (let [{:keys [id]} jsonrpc]
-    {:id id
-     :jsonrpc "2.0"
-     :result result}))
+(defn response [request result]
+  (merge (select-keys request [:id :jsonrpc]) {:result result}))
 
 (defn header [chars]
   (->> (str/split-lines (apply str chars))
