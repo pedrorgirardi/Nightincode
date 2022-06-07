@@ -4,6 +4,7 @@
    [clojure.java.io :as io]
    [clojure.data.json :as json]
    [clojure.string :as str]
+   [clojure.pprint :as pprint]
 
    [clj-kondo.core :as clj-kondo]
    [language-server-protocol.core :as lsp])
@@ -142,7 +143,7 @@
     (doto
       (Thread.
         (fn []
-          (lsp/start (select-keys config [:in :out]))))
+          (lsp/start (select-keys config [:in :out :follow]))))
       (.start))
 
     (lsp/log "REPL port:" (.getLocalPort server-socket))
@@ -152,7 +153,10 @@
 (defn -main [& _]
   (start
     {:in System/in
-     :out System/out}))
+     :out System/out
+     :follow (fn [{:keys [status content]}]
+               (when (= status :message-handled)
+                 (lsp/log (with-out-str (pprint/pprint [status (:method content)])))))}))
 
 
 (comment

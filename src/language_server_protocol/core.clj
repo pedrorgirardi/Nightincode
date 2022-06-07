@@ -1,8 +1,7 @@
 (ns language-server-protocol.core
   (:require
    [clojure.string :as str]
-   [clojure.data.json :as json]
-   [clojure.pprint :as pprint])
+   [clojure.data.json :as json])
 
   (:import
    (java.io
@@ -58,10 +57,12 @@
           (String. buffer)
           (recur off'))))))
 
-(defn start [{:keys [in out]}]
+(defn start [{:keys [in out follow]}]
   (let [^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
 
         ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))
+
+        follow (or follow identity)
 
         initial-state {:chars []
                        :newline# 0
@@ -71,19 +72,22 @@
       (cond
         ;; Two consecutive return & newline characters - parse header and content.
         (and (= return# 2) (= newline# 2))
-        (let [{:keys [Content-Length]} (header chars)
+        (let [{:keys [Content-Length] :as header} (header chars)
 
               jsonrpc-str (reads reader Content-Length)
 
               {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-              handled (handle jsonrpc)]
+              _ (follow {:status :message-decoded
+                         :header header
+                         :content jsonrpc})
 
-          ;; Input
-          (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
+              handled (handle jsonrpc)
 
-          ;; Output
-          (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
+              _ (follow {:status :message-handled
+                         :header header
+                         :content jsonrpc
+                         :handled handled})]
 
           ;; Don't send a response back for a notification.
           ;; (It's assumed that only requests have ID.)
@@ -96,8 +100,12 @@
           (when jsonrpc-id
             (let [response-str (json/write-str handled)
                   response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+
               (.write writer response-str)
-              (.flush writer)))
+              (.flush writer)
+
+              (follow {:status :response-sent
+                       :response response-str})))
 
           (recur initial-state))
 
