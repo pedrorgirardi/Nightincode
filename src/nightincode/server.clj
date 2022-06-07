@@ -147,7 +147,7 @@
 
     (lsp/log "REPL port:" (.getLocalPort server-socket))
 
-    (reset! state-ref {:server-repl-port (.getLocalPort server-socket)})))
+    (reset! state-ref {:nightincode/repl-server-socket server-socket})))
 
 (defn -main [& _]
   (start
@@ -160,6 +160,8 @@
   (keys @state-ref)
 
   (:initialize-params @state-ref)
+
+  (:nightincode/repl-server-socket @state-ref)
 
   (keys (:nightincode/index @state-ref))
 
