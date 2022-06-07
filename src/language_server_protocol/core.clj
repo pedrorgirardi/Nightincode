@@ -62,11 +62,22 @@
 (defn buffered-writer ^BufferedWriter [^OutputStream out]
   (BufferedWriter. (OutputStreamWriter. out "UTF-8")))
 
-(defn write [^Writer writer jsonrpc]
-  (let [s (json/write-str jsonrpc)
-        s (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes s)) s)]
-    (.write writer s)
-    (.flush writer)))
+(defn message
+  "The base protocol consists of a header and a content part (comparable to HTTP).
+
+  The header and content part are separated by a \\r\\n.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#baseProtocol"
+  [content]
+  (let [s (json/write-str content)]
+    (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes s)) s)))
+
+(defn write [^Writer writer content]
+  (doto writer
+    (.write (message content))
+    (.flush))
+
+  nil)
 
 (defn start [{:keys [reader writer trace]}]
   (let [trace (or trace identity)
@@ -109,8 +120,7 @@
           ;; > A processed notification message must not send a response back. They work like events.
           ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
           (when jsonrpc-id
-            (let [response-str (json/write-str handled)
-                  response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+            (let [response-str (message handled)]
 
               (.write writer response-str)
               (.flush writer)
