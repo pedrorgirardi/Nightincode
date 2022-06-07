@@ -83,7 +83,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
-  (swap! state-ref assoc :initialize-params (:params jsonrpc))
+  (swap! state-ref assoc :nightincode/initialize-params (:params jsonrpc))
 
   (lsp/response jsonrpc
     {:capabilities
@@ -163,10 +163,10 @@
 
   (keys @state-ref)
 
-  (:initialize-params @state-ref)
+  (let [{:nightincode/keys [initialize-params index]} @state-ref]
+    (def initialize-params initialize-params)
+    (def index index))
 
-  (:nightincode/repl-server-socket @state-ref)
-
-  (keys (:nightincode/index @state-ref))
+  (keys index)
 
   )
