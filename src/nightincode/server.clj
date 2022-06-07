@@ -77,15 +77,15 @@
 (def clojuredocs-completion-delay
   (delay (clojuredocs-completion)))
 
-(defmethod lsp/handle "initialize" [jsonrpc]
+(defmethod lsp/handle "initialize" [request]
 
   ;; The initialize request is sent as the first request from the client to the server.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
-  (swap! state-ref assoc :nightincode/initialize-params (:params jsonrpc))
+  (swap! state-ref assoc :nightincode/initialize-params (:params request))
 
-  (lsp/response jsonrpc
+  (lsp/response request
     {:capabilities
      {;; Defines how the host (editor) should sync document changes to the language server.
       ;;
@@ -102,7 +102,7 @@
      :serverInfo
      {:name "Nightincode"}}))
 
-(defmethod lsp/handle "textDocument/didOpen" [jsonrpc]
+(defmethod lsp/handle "textDocument/didOpen" [notification]
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
   ;; The document’s content is now managed by the client and the server must not try to read the document’s content using the document’s Uri.
@@ -110,30 +110,34 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-  (let [textDocument (get-in jsonrpc [:params :textDocument])
+  (let [textDocument (get-in notification [:params :textDocument])
 
         result (analyze-document textDocument)
         result (select-keys result [:findings :analysis :summary])]
 
     (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
 
-(defmethod lsp/handle "textDocument/didClose" [jsonrpc]
+(defmethod lsp/handle "textDocument/didClose" [notification]
 
   ;; The document close notification is sent from the client to the server when the document got closed in the client.
   ;; The document’s master now exists where the document’s Uri points to (e.g. if the document’s Uri is a file Uri the master now exists on disk).
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
 
-  (let [textDocument (get-in jsonrpc [:params :textDocument])]
+  (let [textDocument (get-in notification [:params :textDocument])]
     (swap! state-ref update :nightincode/index dissoc (text-document-uri textDocument))))
 
-(defmethod lsp/handle "textDocument/completion" [jsonrpc]
+(defmethod lsp/handle "textDocument/completion" [request]
 
   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
 
-  (lsp/response jsonrpc @clojuredocs-completion-delay))
+  (lsp/response request @clojuredocs-completion-delay))
+
+
+;; ---------------------------------------------------------
+
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
