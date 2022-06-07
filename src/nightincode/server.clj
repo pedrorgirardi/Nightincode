@@ -5,6 +5,7 @@
    [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.pprint :as pprint]
+   [clojure.tools.logging :as log]
 
    [clj-kondo.core :as clj-kondo]
    [language-server-protocol.core :as lsp])
@@ -160,7 +161,7 @@
           (lsp/start (select-keys config [:in :out :trace]))))
       (.start))
 
-    (lsp/log "REPL port:" (.getLocalPort server-socket))
+    (log/debug "REPL port:" (.getLocalPort server-socket))
 
     (reset! state-ref {:nightincode/repl-server-socket server-socket})))
 
@@ -170,7 +171,7 @@
      :out System/out
      :trace (fn [{:keys [status content]}]
               (when (= status :message-decoded)
-                (lsp/log (with-out-str (pprint/pprint [status (:method content)])))))}))
+                (log/debug (with-out-str (pprint/pprint [status (:method content)])))))}))
 
 
 (comment

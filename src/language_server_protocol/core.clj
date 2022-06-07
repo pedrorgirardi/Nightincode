@@ -16,10 +16,6 @@
 
   (:gen-class))
 
-(defn log [& s]
-  (let [f (File. (System/getProperty "java.io.tmpdir") "Nightincode.log")]
-    (spit f (str (str/join " " s) "\n") :append true)))
-
 (defn response [request result]
   (merge (select-keys request [:id :jsonrpc]) {:result result}))
 

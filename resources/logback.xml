@@ -1,0 +1,69 @@
+<configuration>
+
+    <!-- The output file configuration for log/all.log -->
+    <appender name="ALL_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <!-- Default encoder is ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+        <encoder>
+            <pattern>%date{HH:mm:ss.SSS} %-5level %logger{25}: %msg %X thread=%thread%n</pattern>
+        </encoder>
+
+        <!-- Default location of log file is log/all.log -->
+        <file>${TMPDIR}/Nightincode-all.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Roll over log files daily -->
+            <fileNamePattern>${TMPDIR}/Nightincode-all.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+            <!-- And start a new file every 64 MB -->
+            <maxFileSize>64 MB</maxFileSize>
+
+            <!-- Keep at most 15 days of history -->
+            <maxHistory>15</maxHistory>
+
+            <!-- Up to a maximum of 512 MB -->
+            <totalSizeCap>512MB</totalSizeCap>
+
+            <!-- Ensure short-lived processes still clean up old logs -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <!-- The output file configuration for log/app.log -->
+    <appender name="SERVER_LOG_FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+
+        <!-- Default encoder is ch.qos.logback.classic.encoder.PatternLayoutEncoder -->
+        <encoder>
+            <pattern>%date{HH:mm:ss.SSS} %-5level %logger{25}: %msg %X thread=%thread%n</pattern>
+        </encoder>
+
+        <!-- Default location of log file is log/app.log -->
+        <file>${TMPDIR}/Nightincode.log</file>
+
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <!-- Roll over log files daily -->
+            <fileNamePattern>${TMPDIR}/Nightincode.%d{yyyy-MM-dd}.%i.log</fileNamePattern>
+
+            <!-- And start a new file every 64 MB -->
+            <maxFileSize>64 MB</maxFileSize>
+
+            <!-- Keep at most 15 days of history -->
+            <maxHistory>15</maxHistory>
+
+            <!-- Up to a maximum of 512 MB -->
+            <totalSizeCap>512MB</totalSizeCap>
+
+            <!-- Ensure short-lived processes still clean up old logs -->
+            <cleanHistoryOnStart>true</cleanHistoryOnStart>
+        </rollingPolicy>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="ALL_LOG_FILE"/>
+    </root>
+
+    <logger name="nightincode" level="ALL">
+        <appender-ref ref="SERVER_LOG_FILE"/>
+    </logger>
+
+</configuration>
