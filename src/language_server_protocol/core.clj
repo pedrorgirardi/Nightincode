@@ -7,10 +7,13 @@
   (:import
    (java.io
     File
-    StringReader)
+    Reader
 
-   (clojure.lang
-    LineNumberingPushbackReader))
+    InputStreamReader
+    OutputStreamWriter
+
+    BufferedReader
+    BufferedWriter))
 
   (:gen-class))
 
@@ -20,6 +23,19 @@
 
 (defn response [request result]
   (merge (select-keys request [:id :jsonrpc]) {:result result}))
+
+
+;; --------------------------------
+
+
+(defmulti handle :method)
+
+(defmethod handle :default [jsonrpc]
+  (response jsonrpc nil))
+
+
+;; --------------------------------
+
 
 (defn header [chars]
   (->> (str/split-lines (apply str chars))
@@ -34,80 +50,119 @@
             [k v]))))
     (into {})))
 
-(defn reads [len]
+(defn reads [^Reader reader len]
   (let [^"[C" buffer (make-array Character/TYPE len)]
     (loop [off 0]
-      (let [off' (.read *in* buffer off (- len off))]
+      (let [off' (.read reader buffer off (- len off))]
         (if (< off len)
           (String. buffer)
           (recur off'))))))
 
-(defn default-handler [jsonrpc]
-  (response jsonrpc nil))
+(defn start [{:keys [in out]}]
+  (let [^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
 
-(defn start [{:keys [method->handler]}]
-  (let [state-ref (atom {:eof? false
-                         :chars []
-                         :newline# 0})]
-    (while (not (:eof?  @state-ref))
-      (let [{:keys [chars newline#]} @state-ref]
-        (cond
-          ;; Two consecutive newline characters - parse header and content.
-          (= newline# 2)
-          (let [{:keys [Content-Length]} (header chars)
+        ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))
 
-                ;; Increment len to account for \newline before content.
-                ;; Note: I don't quite understand why `reads` is consuming the \newline - I need to look into it.
-                jsonrpc-str (reads (inc Content-Length))
+        initial-state {:chars []
+                       :newline# 0
+                       :return# 0}]
 
-                {jsonrpc-id :id
-                 jsonrpc-method :method :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
+    (loop [{:keys [chars newline# return#] :as state} initial-state]
+      (cond
+        ;; Two consecutive return & newline characters - parse header and content.
+        (and (= return# 2) (= newline# 2))
+        (let [{:keys [Content-Length]} (header chars)
 
-                handler (or (method->handler jsonrpc-method) default-handler)
+              jsonrpc-str (reads reader Content-Length)
 
-                handled (handler jsonrpc)]
+              {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-            ;; Input
-            (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
+              handled (handle jsonrpc)]
 
-            ;; Output
-            (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
+          ;; Input
+          (log (with-out-str (pprint/pprint (select-keys jsonrpc [:id :method]))))
 
-            ;; Don't send a response back for a notification.
-            ;; (It's assumed that only requests have ID.)
-            ;;
-            ;; > Every processed request must send a response back to the sender of the request.
-            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
-            ;;
-            ;; > A processed notification message must not send a response back. They work like events.
-            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
-            (when jsonrpc-id
-              (let [response-str (json/write-str handled)
-                    response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+          ;; Output
+          (log (with-out-str (pprint/pprint (select-keys handled [:id]))))
 
-                (print response-str)
+          ;; Don't send a response back for a notification.
+          ;; (It's assumed that only requests have ID.)
+          ;;
+          ;; > Every processed request must send a response back to the sender of the request.
+          ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
+          ;;
+          ;; > A processed notification message must not send a response back. They work like events.
+          ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
+          (when jsonrpc-id
+            (let [response-str (json/write-str handled)
+                  response-str (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes response-str)) response-str)]
+              (.write writer response-str)
+              (.flush writer)))
 
-                (flush)))
+          (recur initial-state))
 
-            (reset! state-ref {:chars []
-                               :newline# 0}))
+        :else
+        (let [c (.read reader)]
+          (when-not (= c -1)
+            (recur (merge state {:chars (conj chars (char c))}
+                     (cond
+                       (= (char c) \newline)
+                       {:newline# (inc newline#)}
 
-          :else
-          (let [c (.read *in*)]
-            (reset! state-ref {:eof? (= c -1)
-                               :chars (conj chars (char c))
-                               ;; Reset newline counter when next character is part of the header.
-                               :newline# (if (= (char c) \newline)
-                                           (inc newline#)
-                                           0)})))))))
+                       (= (char c) \return)
+                       {:return# (inc return#)}
+
+                       ;; Reset return & newline counter when next character is part of the header.
+                       :else
+                       {:return# 0
+                        :newline# 0})))))))))
 
 (comment
 
-  (def r
-    (LineNumberingPushbackReader.
-      (StringReader. "Foo1: 1\r\nFoo2: 2\r\n\r\n{}")))
 
-  (char (.read r))
+  (defn rpc
+    [^java.io.Reader in ^java.io.Writer out]
+    (loop []
+      (let [recur? (try
+                     (let [header (.readLine in)
+                           ;; TODO: Actually parse header
+                           len (parse-long (str/trim (second (str/split header #":"))))]
+                       ;; Discard empty line
+                       (.readLine in)
+                       (let [buf (make-array Character/TYPE len)
+                             chars-read (.read in buf 0 len)]
+                         (if (neg? chars-read)
+                           :eof
+                           (let [message {:header header :content (json/read-str (String. buf))}]
+                             (tap> [:actually-handle-message message])
+                             (.write out (format "Handled message %s\n" (pr-str message)))
+                             (.flush out)
+                             true))))
+                     (catch java.io.IOException _
+                       ;; Stream closed
+                       (tap> :exit)
+                       false))]
+        (when recur? (recur)))))
+
+  (import '(java.io BufferedReader BufferedWriter PipedReader PipedWriter))
+
+  (with-open [pipe-in (PipedWriter.)
+              in-writer (BufferedWriter. pipe-in)
+              in (BufferedReader. (PipedReader. pipe-in))
+
+              pipe-out (PipedReader.)
+              out-reader (BufferedReader. pipe-out)
+              out (BufferedWriter. (PipedWriter. pipe-out))]
+    (let [f (future (rpc in out))
+          message (json/write-str {"jsonrpc" "2.0" "id" 1 "method" "textDocument/didOpen" "params" {}})]
+      (try
+        ;; `count` is probably the wrong way to calculate the length of the message?
+        (.write in-writer (format "Content-Length: %d\r\n\r\n" (count message)))
+        (.write in-writer message)
+        (.flush in-writer)
+        (tap> (.readLine out-reader))
+        (catch Throwable _
+          (future-cancel f)))))
 
 
   )

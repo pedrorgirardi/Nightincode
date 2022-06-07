@@ -76,63 +76,93 @@
 (def clojuredocs-completion-delay
   (delay (clojuredocs-completion)))
 
-(def method->handler
-  {;; The initialize request is sent as the first request from the client to the server.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
-   "initialize"
-   (fn [jsonrpc]
-     (lsp/response jsonrpc {:capabilities
-                            {;; Defines how the host (editor) should sync document changes to the language server.
-                             ;;
-                             ;; 0: Documents should not be synced at all.
-                             ;; 1: Documents are synced by always sending the full content of the document.
-                             ;; 2: Documents are synced by sending the full content on open.
-                             ;;    After that only incremental updates to the document are send.
-                             ;;
-                             ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
-                             :textDocumentSync 1
-                             :hoverProvider true
-                             :completionProvider {}}
+(defmethod lsp/handle "initialize" [jsonrpc]
 
-                            :serverInfo
-                            {:name "Nightincode"}}))
+  ;; The initialize request is sent as the first request from the client to the server.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
-   "textDocument/didOpen"
-   (fn [jsonrpc]
-     (let [textDocument (get-in jsonrpc [:params :textDocument])
+  (swap! state-ref assoc :initialize-params (:params jsonrpc))
 
-           result (analyze-document textDocument)
-           result (select-keys result [:findings :analysis :summary])]
+  (lsp/response jsonrpc
+    {:capabilities
+     {;; Defines how the host (editor) should sync document changes to the language server.
+      ;;
+      ;; 0: Documents should not be synced at all.
+      ;; 1: Documents are synced by always sending the full content of the document.
+      ;; 2: Documents are synced by sending the full content on open.
+      ;;    After that only incremental updates to the document are send.
+      ;;
+      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
+      :textDocumentSync 1
+      :hoverProvider true
+      :completionProvider {}}
 
-       (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
+     :serverInfo
+     {:name "Nightincode"}}))
 
+(defmethod lsp/handle "textDocument/didOpen" [jsonrpc]
 
-   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
-   ;;
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-   "textDocument/completion"
-   (fn [jsonrpc]
-     (lsp/response jsonrpc @clojuredocs-completion-delay))})
+  ;; The document open notification is sent from the client to the server to signal newly opened text documents.
+  ;; The document’s content is now managed by the client and the server must not try to read the document’s content using the document’s Uri.
+  ;; Open in this sense means it is managed by the client. It doesn’t necessarily mean that its content is presented in an editor.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-(defn start
-  [{:keys [method->handler]}]
-  (let [socket-port (with-open [socket (ServerSocket. 0)]
-                      (.getLocalPort socket))]
-    (start-server
-      {:name "REPL"
-       :port socket-port
-       :accept 'clojure.core.server/repl})
+  (let [textDocument (get-in jsonrpc [:params :textDocument])
 
+        result (analyze-document textDocument)
+        result (select-keys result [:findings :analysis :summary])]
+
+    (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
+
+(defmethod lsp/handle "textDocument/didClose" [jsonrpc]
+
+  ;; The document close notification is sent from the client to the server when the document got closed in the client.
+  ;; The document’s master now exists where the document’s Uri points to (e.g. if the document’s Uri is a file Uri the master now exists on disk).
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
+
+  (let [textDocument (get-in jsonrpc [:params :textDocument])]
+    (swap! state-ref update :nightincode/index dissoc (text-document-uri textDocument))))
+
+(defmethod lsp/handle "textDocument/completion" [jsonrpc]
+
+  ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
+
+  (lsp/response jsonrpc @clojuredocs-completion-delay))
+
+(defn start [config]
+  (let [^ServerSocket server-socket (start-server
+                                      {:name "REPL"
+                                       :port 0
+                                       :accept 'clojure.core.server/repl})]
     (doto
       (Thread.
         (fn []
-          (lsp/start {:method->handler method->handler})))
+          (lsp/start (select-keys config [:in :out]))))
       (.start))
 
-    (swap! state-ref assoc
-      :REPL/port socket-port)))
+    (lsp/log "REPL port:" (.getLocalPort server-socket))
+
+    (reset! state-ref {:nightincode/repl-server-socket server-socket})))
 
 (defn -main [& _]
-  (start {:method->handler #'method->handler}))
+  (start
+    {:in System/in
+     :out System/out}))
 
+
+(comment
+
+  (keys @state-ref)
+
+  (:initialize-params @state-ref)
+
+  (:nightincode/repl-server-socket @state-ref)
+
+  (keys (:nightincode/index @state-ref))
+
+  )
