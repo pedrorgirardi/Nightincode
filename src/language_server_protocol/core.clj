@@ -5,8 +5,11 @@
 
   (:import
    (java.io
-    File
     Reader
+    Writer
+
+    InputStream
+    OutputStream
 
     InputStreamReader
     OutputStreamWriter
@@ -53,12 +56,14 @@
           (String. buffer)
           (recur off'))))))
 
-(defn start [{:keys [in out trace]}]
-  (let [^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
+(defn buffered-reader ^BufferedReader [^InputStream in]
+  (BufferedReader. (InputStreamReader. in "UTF-8")))
 
-        ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))
+(defn buffered-writer ^BufferedWriter [^OutputStream out]
+  (BufferedWriter. (OutputStreamWriter. out "UTF-8")))
 
-        trace (or trace identity)
+(defn start [{:keys [reader writer trace]}]
+  (let [trace (or trace identity)
 
         initial-state {:chars []
                        :newline# 0

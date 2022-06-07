@@ -178,19 +178,19 @@
                                        :port 0
                                        :accept 'clojure.core.server/repl})]
     (doto
-      (Thread.
-        (fn []
-          (lsp/start (select-keys config [:in :out :trace]))))
+      (Thread. #(lsp/start config))
       (.start))
 
     (log/debug "REPL port:" (.getLocalPort server-socket))
 
-    (reset! state-ref {:nightincode/repl-server-socket server-socket})))
+    (reset! state-ref #:nightincode {:repl-server-socket server-socket
+                                     :reader (:reader config)
+                                     :writer (:writer config)})))
 
 (defn -main [& _]
   (start
-    {:in System/in
-     :out System/out
+    {:reader (lsp/buffered-reader System/in)
+     :writer (lsp/buffered-writer System/out)
      :trace (fn [{:keys [status content]}]
               (when (= status :message-decoded)
                 (log/debug status (:method content))))}))
