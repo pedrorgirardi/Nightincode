@@ -113,6 +113,29 @@
 
   (swap! state-ref assoc :nightincode/initialized-params (:params notification)))
 
+(defmethod lsp/handle "shutdown" [request]
+
+  ;; The shutdown request is sent from the client to the server.
+  ;; It asks the server to shut down, but to not exit (otherwise the response might not be delivered correctly to the client).
+  ;; There is a separate exit notification that asks the server to exit.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
+
+  (swap! state-ref assoc :nightincode/shutdown? true)
+
+  (lsp/response request nil))
+
+(defmethod lsp/handle "exit" [_]
+
+  ;; A notification to ask the server to exit its process.
+  ;; The server should exit with success code 0 if the shutdown request has been received before; otherwise with error code 1.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit
+
+  (System/exit (if (:nightincode/shutdown? @state-ref)
+                 0
+                 1)))
+
 (defmethod lsp/handle "textDocument/didOpen" [notification]
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
