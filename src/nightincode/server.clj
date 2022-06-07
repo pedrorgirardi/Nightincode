@@ -102,6 +102,16 @@
      :serverInfo
      {:name "Nightincode"}}))
 
+(defmethod lsp/handle "initialized" [notification]
+
+  ;; The initialized notification is sent from the client to the server after
+  ;; the client received the result of the initialize request but before
+  ;; the client is sending any other request or notification to the server.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
+
+  (swap! state-ref assoc :nightincode/initialized-params (:params notification)))
+
 (defmethod lsp/handle "textDocument/didOpen" [notification]
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
@@ -167,8 +177,9 @@
 
   (keys @state-ref)
 
-  (let [{:nightincode/keys [initialize-params index]} @state-ref]
+  (let [{:nightincode/keys [initialize-params initialized-params index]} @state-ref]
     (def initialize-params initialize-params)
+    (def initialized-params initialized-params)
     (def index index))
 
   (keys index)
