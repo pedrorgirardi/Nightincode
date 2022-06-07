@@ -76,18 +76,22 @@
 
               jsonrpc-str (reads reader Content-Length)
 
-              {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
+              ;; Let the client know that the message, request or notification, was decoded.
+              trace-decoded (fn [jsonrpc]
+                              (trace {:status :message-decoded
+                                      :header header
+                                      :content jsonrpc}))
 
-              _ (trace {:status :message-decoded
-                        :header header
-                        :content jsonrpc})
+              {jsonrpc-id :id :as jsonrpc} (doto (json/read-str jsonrpc-str :key-fn keyword) trace-decoded)
 
-              handled (handle jsonrpc)
+              ;; Let the client know that the message, request or notification, was handled.
+              trace-handled (fn [handled]
+                              (trace {:status :message-handled
+                                      :header header
+                                      :content jsonrpc
+                                      :handled handled}))
 
-              _ (trace {:status :message-handled
-                        :header header
-                        :content jsonrpc
-                        :handled handled})]
+              handled (doto (handle jsonrpc) trace-handled)]
 
           ;; Don't send a response back for a notification.
           ;; (It's assumed that only requests have ID.)
@@ -104,6 +108,7 @@
               (.write writer response-str)
               (.flush writer)
 
+              ;; Let the client know that a response was sent for the request.
               (trace {:status :response-sent
                       :response response-str})))
 
