@@ -62,6 +62,12 @@
 (defn buffered-writer ^BufferedWriter [^OutputStream out]
   (BufferedWriter. (OutputStreamWriter. out "UTF-8")))
 
+(defn write [^Writer writer jsonrpc]
+  (let [s (json/write-str jsonrpc)
+        s (format "Content-Length: %s\r\n\r\n%s" (alength (.getBytes s)) s)]
+    (.write writer s)
+    (.flush writer)))
+
 (defn start [{:keys [reader writer trace]}]
   (let [trace (or trace identity)
 

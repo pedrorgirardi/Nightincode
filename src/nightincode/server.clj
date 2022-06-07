@@ -10,6 +10,9 @@
    [language-server-protocol.core :as lsp])
 
   (:import
+   (java.io
+    Writer)
+
    (java.net
     ServerSocket
     URI))
@@ -21,6 +24,16 @@
 (set! *warn-on-reflection* true)
 
 (def state-ref (atom nil))
+
+(defn writer ^Writer [state]
+  (:nightincode/writer state))
+
+(defn repl-port [state]
+  (some-> (:nightincode/repl-server-socket state) (.getLocalPort)))
+
+
+;; ---------------------------------------------------------
+
 
 (defn text-document-uri [textDocument]
   (:uri textDocument))
@@ -110,7 +123,14 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (swap! state-ref assoc :nightincode/initialized-params (:params notification)))
+  (swap! state-ref assoc :nightincode/initialized-params (:params notification))
+
+  ;; Log a welcome message in the client.
+  (lsp/write (writer @state-ref)
+    {:jsonrpc "2.0"
+     :method "window/logMessage"
+     :params {:type 4
+              :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (repl-port @state-ref))}}))
 
 (defmethod lsp/handle "shutdown" [request]
 
@@ -177,15 +197,16 @@
                                       {:name "REPL"
                                        :port 0
                                        :accept 'clojure.core.server/repl})]
-    (doto
-      (Thread. #(lsp/start config))
-      (.start))
 
     (log/debug "REPL port:" (.getLocalPort server-socket))
 
     (reset! state-ref #:nightincode {:repl-server-socket server-socket
                                      :reader (:reader config)
-                                     :writer (:writer config)})))
+                                     :writer (:writer config)})
+
+    (doto
+      (Thread. #(lsp/start config))
+      (.start))))
 
 (defn -main [& _]
   (start
