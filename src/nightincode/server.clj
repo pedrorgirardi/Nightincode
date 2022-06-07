@@ -171,7 +171,7 @@
      :out System/out
      :trace (fn [{:keys [status content]}]
               (when (= status :message-decoded)
-                (log/debug (with-out-str (pprint/pprint [status (:method content)])))))}))
+                (log/debug status (:method content))))}))
 
 
 (comment
