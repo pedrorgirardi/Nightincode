@@ -18,14 +18,4 @@
                :jar server.jar
                :aot true}
    :jvm-opts     ["-Dclojure.compiler.direct-linking=true"
-                  "-Dclojure.spec.skip-macros=true"]}
-
-  :server-JAR2
-  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
-   :exec-fn hf.depstar/uberjar
-   :exec-args {:main-class language-server-protocol.core
-               :exec-fn hf.depstar/uberjar
-               :jar server.jar
-               :aot true}
-   :jvm-opts     ["-Dclojure.compiler.direct-linking=true"
                   "-Dclojure.spec.skip-macros=true"]}}}
