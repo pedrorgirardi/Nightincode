@@ -155,7 +155,7 @@
     {:in System/in
      :out System/out
      :trace (fn [{:keys [status content]}]
-              (when (= status :message-handled)
+              (when (= status :message-decoded)
                 (lsp/log (with-out-str (pprint/pprint [status (:method content)])))))}))
 
 
