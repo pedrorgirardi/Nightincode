@@ -82,6 +82,8 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
+  (swap! state-ref assoc :initialize-params (:params jsonrpc))
+
   (lsp/response jsonrpc
     {:capabilities
      {;; Defines how the host (editor) should sync document changes to the language server.
@@ -102,6 +104,8 @@
 (defmethod lsp/handle "textDocument/didOpen" [jsonrpc]
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
+  ;; The document’s content is now managed by the client and the server must not try to read the document’s content using the document’s Uri.
+  ;; Open in this sense means it is managed by the client. It doesn’t necessarily mean that its content is presented in an editor.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
@@ -112,6 +116,16 @@
 
     (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
 
+(defmethod lsp/handle "textDocument/didClose" [jsonrpc]
+
+  ;; The document close notification is sent from the client to the server when the document got closed in the client.
+  ;; The document’s master now exists where the document’s Uri points to (e.g. if the document’s Uri is a file Uri the master now exists on disk).
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
+
+  (let [textDocument (get-in jsonrpc [:params :textDocument])]
+    (swap! state-ref update :nightincode/index dissoc (text-document-uri textDocument))))
+
 (defmethod lsp/handle "textDocument/completion" [jsonrpc]
 
   ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
@@ -121,24 +135,32 @@
   (lsp/response jsonrpc @clojuredocs-completion-delay))
 
 (defn start [config]
-  (let [socket-port (with-open [socket (ServerSocket. 0)]
-                      (.getLocalPort socket))]
-    (start-server
-      {:name "REPL"
-       :port socket-port
-       :accept 'clojure.core.server/repl})
-
+  (let [^ServerSocket server-socket (start-server
+                                      {:name "REPL"
+                                       :port 0
+                                       :accept 'clojure.core.server/repl})]
     (doto
       (Thread.
         (fn []
           (lsp/start (select-keys config [:in :out]))))
       (.start))
 
-    (swap! state-ref assoc
-      :REPL/port socket-port)))
+    (lsp/log "REPL port:" (.getLocalPort server-socket))
+
+    (reset! state-ref {:server-repl-port (.getLocalPort server-socket)})))
 
 (defn -main [& _]
   (start
     {:in System/in
      :out System/out}))
 
+
+(comment
+
+  (keys @state-ref)
+
+  (:initialize-params @state-ref)
+
+  (keys (:nightincode/index @state-ref))
+
+  )
