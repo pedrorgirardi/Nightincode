@@ -143,7 +143,7 @@
     (doto
       (Thread.
         (fn []
-          (lsp/start (select-keys config [:in :out :follow]))))
+          (lsp/start (select-keys config [:in :out :trace]))))
       (.start))
 
     (lsp/log "REPL port:" (.getLocalPort server-socket))
@@ -154,9 +154,9 @@
   (start
     {:in System/in
      :out System/out
-     :follow (fn [{:keys [status content]}]
-               (when (= status :message-handled)
-                 (lsp/log (with-out-str (pprint/pprint [status (:method content)])))))}))
+     :trace (fn [{:keys [status content]}]
+              (when (= status :message-handled)
+                (lsp/log (with-out-str (pprint/pprint [status (:method content)])))))}))
 
 
 (comment

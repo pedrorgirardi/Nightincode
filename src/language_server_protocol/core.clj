@@ -57,12 +57,12 @@
           (String. buffer)
           (recur off'))))))
 
-(defn start [{:keys [in out follow]}]
+(defn start [{:keys [in out trace]}]
   (let [^BufferedReader reader (BufferedReader. (InputStreamReader. in "UTF-8"))
 
         ^BufferedWriter writer (BufferedWriter. (OutputStreamWriter. out "UTF-8"))
 
-        follow (or follow identity)
+        trace (or trace identity)
 
         initial-state {:chars []
                        :newline# 0
@@ -78,16 +78,16 @@
 
               {jsonrpc-id :id :as jsonrpc} (json/read-str jsonrpc-str :key-fn keyword)
 
-              _ (follow {:status :message-decoded
-                         :header header
-                         :content jsonrpc})
+              _ (trace {:status :message-decoded
+                        :header header
+                        :content jsonrpc})
 
               handled (handle jsonrpc)
 
-              _ (follow {:status :message-handled
-                         :header header
-                         :content jsonrpc
-                         :handled handled})]
+              _ (trace {:status :message-handled
+                        :header header
+                        :content jsonrpc
+                        :handled handled})]
 
           ;; Don't send a response back for a notification.
           ;; (It's assumed that only requests have ID.)
@@ -104,8 +104,8 @@
               (.write writer response-str)
               (.flush writer)
 
-              (follow {:status :response-sent
-                       :response response-str})))
+              (trace {:status :response-sent
+                      :response response-str})))
 
           (recur initial-state))
 
