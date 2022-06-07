@@ -4,7 +4,6 @@
    [clojure.java.io :as io]
    [clojure.data.json :as json]
    [clojure.string :as str]
-   [clojure.pprint :as pprint]
    [clojure.tools.logging :as log]
 
    [clj-kondo.core :as clj-kondo]
