@@ -7,7 +7,7 @@
    [clojure.tools.logging :as log]
 
    [clj-kondo.core :as clj-kondo]
-   [language-server-protocol.core :as lsp])
+   [lspie.core :as lsp])
 
   (:import
    (java.io
@@ -29,7 +29,8 @@
   (:nightincode/writer state))
 
 (defn repl-port [state]
-  (some-> (:nightincode/repl-server-socket state) (.getLocalPort)))
+  (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
+    (.getLocalPort server-socket)))
 
 
 ;; ---------------------------------------------------------
