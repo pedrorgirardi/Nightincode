@@ -7,7 +7,7 @@
    [clojure.tools.logging :as log]
 
    [clj-kondo.core :as clj-kondo]
-   [lspie.core :as lsp])
+   [lspie.server :as lsp])
 
   (:import
    (java.io
