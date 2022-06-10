@@ -97,7 +97,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
 
-  (swap! state-ref assoc :nightincode/initialize-params (:params request))
+  (swap! state-ref assoc :LSP/InitializeParams (:params request))
 
   (lsp/response request
     {:capabilities
@@ -124,7 +124,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (swap! state-ref assoc :nightincode/initialized-params (:params notification))
+  (swap! state-ref assoc :LSP/InitializedParams (:params notification))
 
   ;; Log a welcome message in the client.
   (lsp/write (writer @state-ref)
@@ -222,9 +222,13 @@
 
   (keys @state-ref)
 
-  (let [{:nightincode/keys [initialize-params initialized-params index]} @state-ref]
-    (def initialize-params initialize-params)
-    (def initialized-params initialized-params)
+  (let [{:keys [LSP/InitializeParams
+                LSP/InitializedParams
+
+                nightincode/index]} @state-ref]
+
+    (def initialize-params InitializeParams)
+    (def initialized-params InitializedParams)
     (def index index))
 
   (keys index)
