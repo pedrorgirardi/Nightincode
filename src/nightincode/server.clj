@@ -214,8 +214,9 @@
     {:reader (lsp/buffered-reader System/in)
      :writer (lsp/buffered-writer System/out)
      :trace (fn [{:keys [status content]}]
+              ;; Debug: log every message decoded by lspie.
               (when (= status :message-decoded)
-                (log/debug status (:method content))))}))
+                (log/debug (select-keys content [:id :method]))))}))
 
 
 (comment
