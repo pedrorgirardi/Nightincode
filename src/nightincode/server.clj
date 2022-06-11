@@ -200,6 +200,8 @@
 
         index (text-document-index @state-ref textDocument)
 
+        ;; WIP
+
         completions @clojuredocs-completion-delay
         completions (into completions
                       (map
