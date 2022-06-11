@@ -233,4 +233,10 @@
 
   (keys index)
 
+  (lsp/write (writer @state-ref)
+    {:jsonrpc "2.0"
+     :method "window/showMessage"
+     :params {:type 3
+              :message "Hello!"}})
+
   )
