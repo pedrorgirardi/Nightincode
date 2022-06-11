@@ -23,7 +23,22 @@
 ;; to resolve Java method calls or field accesses.
 (set! *warn-on-reflection* true)
 
+
+(defn text-document-uri [textDocument]
+  (:uri textDocument))
+
+(defn text-document-path [textDocument]
+  (.getPath (URI. (text-document-uri textDocument))))
+
+
 (def state-ref (atom nil))
+
+(defn text-document-index [state textDocument]
+  (get-in state [:nightincode/index (text-document-uri textDocument)]))
+
+
+;; ---------------------------------------------------------
+
 
 (defn writer ^Writer [state]
   (:nightincode/writer state))
@@ -35,12 +50,6 @@
 
 ;; ---------------------------------------------------------
 
-
-(defn text-document-uri [textDocument]
-  (:uri textDocument))
-
-(defn text-document-path [textDocument]
-  (.getPath (URI. (text-document-uri textDocument))))
 
 (defn analyze-document
   ([textDocument]
@@ -187,7 +196,24 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
 
-  (lsp/response request @clojuredocs-completion-delay))
+  (let [textDocument (get-in request [:params :textDocument])
+
+        index (text-document-index @state-ref textDocument)
+
+        completions @clojuredocs-completion-delay
+        completions (into completions
+                      (map
+                        (fn [{:keys [name doc arglist-strs]}]
+                          (let [detail-arglists (str/join "\n" arglist-strs)
+                                detail-docstring (or doc "")
+
+                                detail (str/join "\n\n" [name detail-arglists detail-docstring])]
+
+                            {:label name
+                             :kind 6
+                             :detail detail})))
+                      (get-in index [:clj-kondo/result :analysis :var-definitions]))]
+    (lsp/response request completions)))
 
 
 ;; ---------------------------------------------------------
