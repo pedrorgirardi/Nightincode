@@ -96,6 +96,7 @@
   ;; The initialize request is sent as the first request from the client to the server.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#serverCapabilities
 
   (swap! state-ref assoc :LSP/InitializeParams (:params request))
 
@@ -110,7 +111,6 @@
       ;;
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
-      :hoverProvider true
       :completionProvider {}}
 
      :serverInfo
