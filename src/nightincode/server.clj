@@ -139,9 +139,20 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (let [delay 15
+  (let [^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
 
-        ^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
+        probe-delay 15
+
+        ;; Nightincode needs to check frequently if the parent process is still alive.
+        ;; A client e.g. Visual Studio Code should ask the server to exit, but that might not happen.
+        ;;
+        ;; > The shutdown request is sent from the client to the server.
+        ;;   It asks the server to shut down, but to not exit (otherwise the response might not be delivered correctly to the client).
+        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
+        ;;
+        ;; > A notification to ask the server to exit its process.
+        ;;   The server should exit with success code 0 if the shutdown request has been received before; otherwise with error code 1.
+        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit
 
         probe (.scheduleWithFixedDelay executor
                 (fn []
@@ -167,8 +178,8 @@
                       (log/debug "Parent process no longer exists; Exiting server...")
 
                       (System/exit 1))))
-                delay
-                delay
+                probe-delay
+                probe-delay
                 TimeUnit/SECONDS)]
 
     (swap! state-ref assoc
