@@ -75,6 +75,17 @@
      {:lint [(text-document-path textDocument)]
       :config config})))
 
+(defn var-index [analysis]
+  (reduce
+    (fn [index definition]
+      (let [{var-namespace :ns
+             var-name :name} definition
+
+            qualified (symbol (str var-namespace) (str var-name))]
+        (update index qualified (fnil conj #{}) definition)))
+    {}
+    (:var-definitions analysis)))
+
 (defn clojuredocs
   "ClojureDocs.org database."
   []
@@ -126,7 +137,7 @@
       ;;
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
-      :completionProvider {}}
+      :completionProvider {:triggerCharacters ["("]}}
 
      :serverInfo
      {:name "Nightincode"}}))
@@ -227,10 +238,37 @@
 
   (let [textDocument (get-in notification [:params :textDocument])
 
-        result (analyze-document textDocument)
-        result (select-keys result [:findings :analysis :summary])]
+        text-document-uri (text-document-uri textDocument)
 
-    (swap! state-ref assoc-in [:nightincode/index (text-document-uri textDocument) :clj-kondo/result] result)))
+        result (analyze-document textDocument)
+        result (select-keys result [:findings :analysis :summary])
+
+        {:keys [analysis]} result
+
+        var-index (var-index analysis)]
+
+    (swap! state-ref
+      (fn [state]
+        (let [state (assoc-in state [:clj-kondo/result text-document-uri] result)
+              state (assoc-in state [:nightincode/index text-document-uri :nightincode/var-index] var-index)]
+          state)))))
+
+(defmethod lsp/handle "textDocument/didChange" [_notification]
+
+  ;; The document change notification is sent from the client to the server to signal changes to a text document.
+  ;; Before a client can change a text document it must claim ownership of its content using the textDocument/didOpen notification.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
+
+  )
+
+(defmethod lsp/handle "textDocument/didSave" [_notification]
+
+  ;; The document save notification is sent from the client to the server when the document was saved in the client.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didSave
+
+  )
 
 (defmethod lsp/handle "textDocument/didClose" [notification]
 
@@ -240,7 +278,14 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
 
   (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref update :nightincode/index dissoc (text-document-uri textDocument))))
+    (swap! state-ref
+      (fn [state]
+        (let [text-document-uri (text-document-uri textDocument)
+
+              state (update state :nightincode/index dissoc text-document-uri)
+              state (update state :clj-kondo/result dissoc text-document-uri)]
+
+          state)))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
@@ -250,23 +295,19 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
-        index (text-document-index @state-ref textDocument)
+        {:keys [nightincode/var-index]} (text-document-index @state-ref textDocument)
 
-        ;; WIP
-
+        ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
+
+        ;; Completions with document definitions.
         completions (into completions
                       (map
-                        (fn [{:keys [name doc arglist-strs]}]
-                          (let [detail-arglists (str/join "\n" arglist-strs)
-                                detail-docstring (or doc "")
-
-                                detail (str/join "\n\n" [name detail-arglists detail-docstring])]
-
-                            {:label name
-                             :kind 6
-                             :detail detail})))
-                      (get-in index [:clj-kondo/result :analysis :var-definitions]))]
+                        (fn [[sym _]]
+                          ;; Var name only because it's a document definition.
+                          {:label (name sym)
+                           :kind 6}))
+                      var-index)]
     (lsp/response request completions)))
 
 
@@ -306,11 +347,13 @@
   (let [{:keys [LSP/InitializeParams
                 LSP/InitializedParams
 
-                nightincode/index]} @state-ref]
+                nightincode/index
+                clj-kondo/result]} @state-ref]
 
     (def initialize-params InitializeParams)
     (def initialized-params InitializedParams)
-    (def index index))
+    (def index index)
+    (def clj-kondo-result result))
 
   (keys index)
 
