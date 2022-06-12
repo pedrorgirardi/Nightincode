@@ -5,11 +5,17 @@
    [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
+   [clojure.java.shell :as shell]
 
    [clj-kondo.core :as clj-kondo]
    [lspie.api :as lsp])
 
   (:import
+   (java.util.concurrent
+    ScheduledExecutorService
+    Executors
+    TimeUnit)
+
    (java.io
     Writer)
 
@@ -133,14 +139,48 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (swap! state-ref assoc :LSP/InitializedParams (:params notification))
+  (let [delay 15
 
-  ;; Log a welcome message in the client.
-  (lsp/write (writer @state-ref)
-    {:jsonrpc "2.0"
-     :method "window/logMessage"
-     :params {:type 4
-              :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (repl-port @state-ref))}}))
+        ^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
+
+        probe (.scheduleWithFixedDelay executor
+                (fn []
+                  (let [pid (get-in @state-ref [:LSP/InitializeParams :processId])
+
+                        ;; Checking if a process is alive was copied from:
+                        ;; https://github.com/clojure-lsp/lsp4clj/blob/492c075d145ddb4e46e245a6f7a4de8a4670fe72/server/src/lsp4clj/core.clj#L296
+                        ;;
+                        ;; Thanks, lsp4clj!
+
+                        windows? (str/includes? (System/getProperty "os.name") "Windows")
+
+                        process-alive? (cond
+                                         windows?
+                                         (let [{:keys [out]} (shell/sh "tasklist" "/fi" (format "\"pid eq %s\"" pid))]
+                                           (str/includes? out (str pid)))
+
+                                         :else
+                                         (let [{:keys [exit]} (shell/sh "kill" "-0" (str pid))]
+                                           (zero? exit)))]
+
+                    (when-not process-alive?
+                      (log/debug "Parent process no longer exists; Exiting server...")
+
+                      (System/exit 1))))
+                delay
+                delay
+                TimeUnit/SECONDS)]
+
+    (swap! state-ref assoc
+      :LSP/InitializedParams (:params notification)
+      :nightincode/probe probe)
+
+    ;; Log a welcome message in the client.
+    (lsp/write (writer @state-ref)
+      {:jsonrpc "2.0"
+       :method "window/logMessage"
+       :params {:type 4
+                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (repl-port @state-ref))}})))
 
 (defmethod lsp/handle "shutdown" [request]
 
