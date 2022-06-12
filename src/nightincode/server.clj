@@ -173,6 +173,7 @@
 
     (swap! state-ref assoc
       :LSP/InitializedParams (:params notification)
+      :nightincode/probe-executor executor
       :nightincode/probe probe)
 
     ;; Log a welcome message in the client.
