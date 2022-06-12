@@ -233,7 +233,7 @@
                                            (zero? exit)))]
 
                     (when-not process-alive?
-                      (log/debug "Parent process no longer exists; Exiting server...")
+                      (log/debug (format "Parent process %s no longer exists; Exiting server..." pid))
 
                       (System/exit 1))))
                 probe-delay
