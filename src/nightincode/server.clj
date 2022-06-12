@@ -98,18 +98,22 @@
         (fn [m]
           (= (:ns m) "clojure.core")))
       (map
-        (fn [m]
+        (fn [{var-ns :ns
+              var-name :name
+              var-args :arglists
+              var-doc :doc :as m}]
           (let [completion-item-kind {"var" 6
                                       "function" 3
                                       "macro" 3}
 
-                detail-name (str (:ns m) "/" (:name m))
-                detail-arglists (str/join "\n" (map #(str "[" % "]") (:arglists m)))
-                detail-docstring (or (:doc m) "")
+                arglists (str/join " " (map #(str "[" % "]") var-args))
 
-                detail (str/join "\n\n" [detail-name detail-arglists detail-docstring])]
+                detail (format "%s/%s %s" var-ns var-name arglists)
+                detail (if (str/blank? var-doc)
+                         detail
+                         (format "%s\n\n%s" detail var-doc))]
 
-            {:label (:name m)
+            {:label var-name
              :kind (completion-item-kind (:type m))
              :detail detail}))))
     (:vars (clojuredocs))))
