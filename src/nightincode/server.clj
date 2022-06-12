@@ -75,16 +75,59 @@
      {:lint [(text-document-path textDocument)]
       :config config})))
 
-(defn var-index [analysis]
-  (reduce
-    (fn [index definition]
-      (let [{var-namespace :ns
-             var-name :name} definition
+(defn var-indexes
+  "Index Var definitions and usages by name and row."
+  [analysis]
+  (let [index {;; Definition indexed by name.
+               :nightincode/var-definition-index {}
 
-            qualified (symbol (str var-namespace) (str var-name))]
-        (update index qualified (fnil conj #{}) definition)))
-    {}
-    (:var-definitions analysis)))
+               ;; Definition indexed by row.
+               :nightincode/var-definition-row-index {}
+
+               ;; Usage indexed by name.
+               :nightincode/var-usage-index {}
+
+               ;; Usage indexed by row.
+               :nightincode/var-usage-row-index {}}
+
+        ;; -- Usage index
+
+        index (reduce
+                (fn [index usage]
+                  (let [{var-namespace :to
+                         var-name :name
+                         var-name-row :name-row} usage
+
+                        sym (symbol (str var-namespace) (str var-name))
+
+                        index (update-in index [:nightincode/var-usage-index sym] (fnil conj #{}) usage)
+
+                        index (update-in index [:nightincode/var-usage-row-index var-name-row] (fnil conj []) usage)]
+
+                    index))
+                index
+                (:var-usages analysis))
+
+
+        ;; -- Definition index
+
+        index (reduce
+                (fn [index definition]
+                  (let [{var-namespace :ns
+                         var-name :name
+                         var-name-row :name-row} definition
+
+                        sym (symbol (str var-namespace) (str var-name))
+
+                        index (update-in index [:nightincode/var-definition-index sym] (fnil conj #{}) definition)
+
+                        index (update-in index [:nightincode/var-definition-row-index var-name-row] (fnil conj []) definition)]
+
+                    index))
+                index
+                (:var-definitions analysis))]
+
+    index))
 
 (defn clojuredocs
   "ClojureDocs.org database."
@@ -249,12 +292,12 @@
 
         {:keys [analysis]} result
 
-        var-index (var-index analysis)]
+        var-indexes (var-indexes analysis)]
 
     (swap! state-ref
       (fn [state]
         (let [state (assoc-in state [:clj-kondo/result text-document-uri] result)
-              state (assoc-in state [:nightincode/index text-document-uri :nightincode/var-index] var-index)]
+              state (update-in state [:nightincode/index text-document-uri] merge var-indexes)]
           state)))))
 
 (defmethod lsp/handle "textDocument/didChange" [_notification]
@@ -299,7 +342,7 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
-        {:keys [nightincode/var-index]} (text-document-index @state-ref textDocument)
+        {:keys [nightincode/var-definition-index]} (text-document-index @state-ref textDocument)
 
         ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
@@ -311,7 +354,7 @@
                           ;; Var name only because it's a document definition.
                           {:label (name sym)
                            :kind 6}))
-                      var-index)]
+                      var-definition-index)]
     (lsp/response request completions)))
 
 
