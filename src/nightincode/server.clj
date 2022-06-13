@@ -36,6 +36,10 @@
 (defn text-document-path [textDocument]
   (.getPath (URI. (text-document-uri textDocument))))
 
+(defn text-document-text [textDocument]
+  (:text textDocument))
+
+
 (defn find-var-definitions [analysis cursor-position]
   )
 
@@ -293,7 +297,8 @@
 
   (let [textDocument (get-in notification [:params :textDocument])
 
-        text-document-uri (text-document-uri textDocument)
+        document-uri (text-document-uri textDocument)
+        document-text (text-document-text textDocument)
 
         result (analyze-document textDocument)
         result (select-keys result [:findings :analysis :summary])
@@ -304,8 +309,9 @@
 
     (swap! state-ref
       (fn [state]
-        (let [state (assoc-in state [:clj-kondo/result text-document-uri] result)
-              state (update-in state [:nightincode/index text-document-uri] merge var-indexes)]
+        (let [state (assoc-in state [:clj-kondo/result document-uri] result)
+              state (assoc-in state [:nightincode/document document-uri] document-text)
+              state (update-in state [:nightincode/index document-uri] merge var-indexes)]
           state)))))
 
 (defmethod lsp/handle "textDocument/didChange" [_notification]
@@ -337,6 +343,7 @@
       (fn [state]
         (let [text-document-uri (text-document-uri textDocument)
 
+              state (update state :nightincode/document dissoc text-document-uri)
               state (update state :nightincode/index dissoc text-document-uri)
               state (update state :clj-kondo/result dissoc text-document-uri)]
 
@@ -405,13 +412,23 @@
   (let [{:keys [LSP/InitializeParams
                 LSP/InitializedParams
 
+                nightincode/document
                 nightincode/index
                 clj-kondo/result]} @state-ref]
 
     (def initialize-params InitializeParams)
     (def initialized-params InitializedParams)
+    (def document document)
     (def index index)
     (def clj-kondo-result result))
+
+  (def document-text
+    (second (first document)))
+
+  (def document-text-split
+    (str/split-lines document-text))
+
+  (get (get document-text-split 91) 16)
 
   (keys index)
 
