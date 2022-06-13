@@ -152,20 +152,20 @@
   [index]
   (:nightincode/var-usage-row-index index))
 
-(defn find-var-usage [index [row col]]
+(defn ?VU [VU_ [row col]]
   (reduce
     (fn [_ {:keys [name-col name-end-col] :as var-usage}]
       (when (<= name-col col name-end-col)
         (reduced var-usage)))
     nil
-    ((VU_ index) row)))
+    (VU_ row)))
 
 (defn T [index row+col]
   (reduce
     (fn [_ k]
       (case k
         :nightincode/VU
-        (when-let [var-usage (find-var-usage index row+col)]
+        (when-let [var-usage (?VU (VU_ index) row+col)]
           (reduced (with-meta var-usage {:nightincode/T :nightincode/VU
                                          :nightincode/row+col row+col})))
 
