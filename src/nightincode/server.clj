@@ -197,52 +197,52 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (let [process-probe (when-let [pid (get-in @state-ref [:LSP/InitializeParams :processId])]
+  (let [probe-state (when-let [pid (get-in @state-ref [:LSP/InitializeParams :processId])]
 
-                        ;; Nightincode needs to check frequently if the parent process is still alive.
-                        ;; A client e.g. Visual Studio Code should ask the server to exit, but that might not happen.
-                        ;;
-                        ;; > The shutdown request is sent from the client to the server.
-                        ;;   It asks the server to shut down, but to not exit (otherwise the response might not be delivered correctly to the client).
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
-                        ;;
-                        ;; > A notification to ask the server to exit its process.
-                        ;;   The server should exit with success code 0 if the shutdown request has been received before; otherwise with error code 1.
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit
+                      ;; Nightincode needs to check frequently if the parent process is still alive.
+                      ;; A client e.g. Visual Studio Code should ask the server to exit, but that might not happen.
+                      ;;
+                      ;; > The shutdown request is sent from the client to the server.
+                      ;;   It asks the server to shut down, but to not exit (otherwise the response might not be delivered correctly to the client).
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
+                      ;;
+                      ;; > A notification to ask the server to exit its process.
+                      ;;   The server should exit with success code 0 if the shutdown request has been received before; otherwise with error code 1.
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit
 
-                        (let [^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
+                      (let [^ScheduledExecutorService executor (Executors/newScheduledThreadPool 1)
 
-                              probe-delay 15
+                            probe-delay 15
 
-                              probe (.scheduleWithFixedDelay executor
-                                      (fn []
-                                        ;; Checking if a process is alive was copied from:
-                                        ;; https://github.com/clojure-lsp/lsp4clj/blob/492c075d145ddb4e46e245a6f7a4de8a4670fe72/server/src/lsp4clj/core.clj#L296
-                                        ;;
-                                        ;; Thanks, lsp4clj!
+                            probe (.scheduleWithFixedDelay executor
+                                    (fn []
+                                      ;; Checking if a process is alive was copied from:
+                                      ;; https://github.com/clojure-lsp/lsp4clj/blob/492c075d145ddb4e46e245a6f7a4de8a4670fe72/server/src/lsp4clj/core.clj#L296
+                                      ;;
+                                      ;; Thanks, lsp4clj!
 
-                                        (let [windows? (str/includes? (System/getProperty "os.name") "Windows")
+                                      (let [windows? (str/includes? (System/getProperty "os.name") "Windows")
 
-                                              process-alive? (cond
-                                                               windows?
-                                                               (let [{:keys [out]} (shell/sh "tasklist" "/fi" (format "\"pid eq %s\"" pid))]
-                                                                 (str/includes? out (str pid)))
+                                            process-alive? (cond
+                                                             windows?
+                                                             (let [{:keys [out]} (shell/sh "tasklist" "/fi" (format "\"pid eq %s\"" pid))]
+                                                               (str/includes? out (str pid)))
 
-                                                               :else
-                                                               (let [{:keys [exit]} (shell/sh "kill" "-0" (str pid))]
-                                                                 (zero? exit)))]
+                                                             :else
+                                                             (let [{:keys [exit]} (shell/sh "kill" "-0" (str pid))]
+                                                               (zero? exit)))]
 
-                                          (when-not process-alive?
-                                            (log/debug (format "Parent process %s no longer exists; Exiting server..." pid))
+                                        (when-not process-alive?
+                                          (log/debug (format "Parent process %s no longer exists; Exiting server..." pid))
 
-                                            (System/exit 1))))
-                                      probe-delay
-                                      probe-delay
-                                      TimeUnit/SECONDS)]
-                          {:nightincode/probe-executor executor
-                           :nightincode/probe probe}))]
+                                          (System/exit 1))))
+                                    probe-delay
+                                    probe-delay
+                                    TimeUnit/SECONDS)]
+                        {:nightincode/probe-executor executor
+                         :nightincode/probe probe}))]
 
-    (swap! state-ref merge {:LSP/InitializedParams (:params notification)} process-probe)
+    (swap! state-ref merge {:LSP/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
     (lsp/write (writer @state-ref)
