@@ -30,30 +30,7 @@
 (set! *warn-on-reflection* true)
 
 
-(defn text-document-uri [textDocument]
-  (:uri textDocument))
-
-(defn text-document-path [textDocument]
-  (.getPath (URI. (text-document-uri textDocument))))
-
-(defn text-document-text [textDocument]
-  (:text textDocument))
-
-
-(defn find-var-definitions [analysis cursor-position]
-  )
-
-(defn find-var-usages [analysis cursor-position]
-  )
-
-(defn thingy-under-cursor [analysis cursor-position]
-  )
-
-
 (def state-ref (atom nil))
-
-(defn text-document-index [state textDocument]
-  (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
 
 ;; ---------------------------------------------------------
@@ -69,6 +46,19 @@
 
 ;; ---------------------------------------------------------
 
+
+(defn text-document-uri [textDocument]
+  (:uri textDocument))
+
+(defn text-document-path [textDocument]
+  (.getPath (URI. (text-document-uri textDocument))))
+
+(defn text-document-text [textDocument]
+  (:text textDocument))
+
+
+(defn text-document-index [state textDocument]
+  (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
 (defn analyze-document
   ([textDocument]
@@ -141,6 +131,50 @@
                 (:var-definitions analysis))]
 
     index))
+
+(defn VD
+  "Var definitions by symbol index."
+  [index]
+  (:nightincode/var-definition-index index))
+
+(defn VD_
+  "Var definitions by row index."
+  [index]
+  (:nightincode/var-definition-row-index index))
+
+(defn VU
+  "Var usages by symbol index."
+  [index]
+  (:nightincode/var-usage-index index))
+
+(defn VU_
+  "Var usages by row index."
+  [index]
+  (:nightincode/var-usage-row-index index))
+
+(defn find-var-usage [index [row col]]
+  (reduce
+    (fn [_ {:keys [name-col name-end-col] :as var-usage}]
+      (when (<= name-col col name-end-col)
+        (reduced var-usage)))
+    nil
+    ((VU_ index) row)))
+
+(defn T [index row+col]
+  (reduce
+    (fn [_ k]
+      (case k
+        :nightincode/VU
+        (when-let [var-usage (find-var-usage index row+col)]
+          (reduced (with-meta var-usage {:nightincode/T :nightincode/VU
+                                         :nightincode/row+col row+col})))
+
+        nil))
+    nil
+    [:nightincode/VU
+     :nightincode/VD
+     :nightincode/LD
+     :nightincode/LU]))
 
 (defn clojuredocs
   "ClojureDocs.org database."
@@ -360,7 +394,9 @@
         position-line (get-in request [:params :position :line])
         position-character (get-in request [:params :position :character])
 
-        {:keys [nightincode/var-definition-index]} (text-document-index @state-ref textDocument)
+        index (text-document-index @state-ref textDocument)
+
+        T' (T index [position-line position-character])
 
         ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
@@ -369,10 +405,30 @@
         completions (into completions
                       (map
                         (fn [[sym _]]
-                          ;; Var name only because it's a document definition.
-                          {:label (name sym)
-                           :kind 6}))
-                      var-definition-index)]
+                          (let [;; Var name only because it's a document definition.
+                                s (name sym)
+
+                                insert {:start
+                                        {:line position-line
+                                         :character position-character}
+                                        :end
+                                        {:line position-line
+                                         :character (dec (count s))}}]
+                            {:label s
+                             :kind 6
+                             :textEdit
+                             {:newText s
+                              :insert insert
+                              :replace
+                              (if T'
+                                {:start
+                                 {:line position-line
+                                  :character (:name-col T')}
+                                 :end
+                                 {:line position-line
+                                  :character (:name-end-col T')}}
+                                insert)}})))
+                      (VD index))]
     (lsp/response request completions)))
 
 
@@ -421,6 +477,22 @@
     (def document document)
     (def index index)
     (def clj-kondo-result result))
+
+  (keys index)
+
+  (lsp/handle
+    {:method "textDocument/completion"
+     :params
+     {:textDocument
+      {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}
+
+      :position
+      {:line 119
+       :character 40}}})
+
+  (VU_ (text-document-index @state-ref {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}))
+
+  (meta (T (text-document-index @state-ref {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}) [119 40]))
 
   (def document-text
     (second (first document)))
