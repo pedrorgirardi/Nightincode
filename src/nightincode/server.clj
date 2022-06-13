@@ -36,6 +36,15 @@
 (defn text-document-path [textDocument]
   (.getPath (URI. (text-document-uri textDocument))))
 
+(defn find-var-definitions [analysis cursor-position]
+  )
+
+(defn find-var-usages [analysis cursor-position]
+  )
+
+(defn thingy-under-cursor [analysis cursor-position]
+  )
+
 
 (def state-ref (atom nil))
 
@@ -340,6 +349,9 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
 
   (let [textDocument (get-in request [:params :textDocument])
+
+        position-line (get-in request [:params :position :line])
+        position-character (get-in request [:params :position :character])
 
         {:keys [nightincode/var-definition-index]} (text-document-index @state-ref textDocument)
 
