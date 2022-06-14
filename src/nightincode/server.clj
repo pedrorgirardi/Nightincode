@@ -429,19 +429,61 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
+        line (get-in request [:params :position :line])
+        character (get-in request [:params :position :character])
+
         index (text-document-index @state-ref textDocument)
+
+        row+col [(inc (get-in request [:params :position :line]))
+                 (inc (get-in request [:params :position :character]))]
+
+        T (?T_ index row+col)
 
         ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
 
         ;; Completions with document definitions.
-        completions (into completions
+        completions (into []
                       (map
                         (fn [[sym _]]
                           ;; Var name only because it's a document definition.
-                          {:label (name sym)
-                           :kind 6}))
-                      (IVD index))]
+                          (merge {:label (name sym)
+                                  :kind 6}
+                            (when T
+                              {:textEdit
+                               {:newText (name sym)
+                                :range
+                                {:start
+                                 {:line line
+                                  :character (dec (:name-col T))}
+                                 :end
+                                 {:line line
+                                  :character (dec (:name-end-col T))}}}}))))
+                      (IVD index))
+
+        #_#_completions [{:label "foobar-baz1"
+                          :textEdit
+                          {:newText "foobar-baz1"
+                           :range
+                           {:start
+                            {:line line
+                             :character 0}
+
+                            :end
+                            {:line line
+                             :character 11}}}}
+
+                         {:label "foobar-baz2"
+                          :textEdit
+                          {:newText "foobar-baz2"
+                           :range
+                           {:start
+                            {:line line
+                             :character 0}
+
+                            :end
+                            {:line line
+                             :character 11}}}}]]
 
     (lsp/response request completions)))
 
@@ -510,7 +552,7 @@
   (?VD_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
 
   (IVU_ (text-document-index @state-ref {:uri lispi-core-uri}))
-  (?VU_ (text-document-index @state-ref {:uri lispi-core-uri}) [49 30])
+  (?VU_ (text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
 
 
   (meta (?T_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
