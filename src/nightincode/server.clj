@@ -78,20 +78,20 @@
      {:lint [(text-document-path textDocument)]
       :config config})))
 
-(defn var-indexes
-  "Index Var definitions and usages by name and row."
+(defn index-V
+  "Index Var definitions and usages by symbol and row."
   [analysis]
-  (let [index {;; Definition indexed by name.
-               :nightincode/var-definition-index {}
+  (let [index {;; Definitions indexed by name.
+               :nightincode/IVD {}
 
-               ;; Definition indexed by row.
-               :nightincode/var-definition-row-index {}
+               ;; Definitions indexed by row.
+               :nightincode/IVD_ {}
 
-               ;; Usage indexed by name.
-               :nightincode/var-usage-index {}
+               ;; Usages indexed by name.
+               :nightincode/IVU {}
 
-               ;; Usage indexed by row.
-               :nightincode/var-usage-row-index {}}
+               ;; Usages indexed by row.
+               :nightincode/IVU_ {}}
 
         ;; -- Usage index
 
@@ -103,9 +103,9 @@
 
                         sym (symbol (str var-namespace) (str var-name))
 
-                        index (update-in index [:nightincode/var-usage-index sym] (fnil conj #{}) usage)
+                        index (update-in index [:nightincode/IVU sym] (fnil conj #{}) usage)
 
-                        index (update-in index [:nightincode/var-usage-row-index var-name-row] (fnil conj []) usage)]
+                        index (update-in index [:nightincode/IVD_ var-name-row] (fnil conj []) usage)]
 
                     index))
                 index
@@ -122,9 +122,9 @@
 
                         sym (symbol (str var-namespace) (str var-name))
 
-                        index (update-in index [:nightincode/var-definition-index sym] (fnil conj #{}) definition)
+                        index (update-in index [:nightincode/IVD sym] (fnil conj #{}) definition)
 
-                        index (update-in index [:nightincode/var-definition-row-index var-name-row] (fnil conj []) definition)]
+                        index (update-in index [:nightincode/IVD_ var-name-row] (fnil conj []) definition)]
 
                     index))
                 index
@@ -138,26 +138,26 @@
 (defn IVD
   "Var definitions indexed by symbol."
   [index]
-  (:nightincode/var-definition-index index))
+  (:nightincode/IVD index))
 
 (defn IVD_
   "Var definitions indexed by row.
 
   Note: row is not zero-based."
   [index]
-  (:nightincode/var-definition-row-index index))
+  (:nightincode/IVD_ index))
 
 (defn IVU
   "Var usages indexed by symbol."
   [index]
-  (:nightincode/var-usage-index index))
+  (:nightincode/IVU index))
 
 (defn IVU_
   "Var usages indexed by row.
 
   Note: row is not zero-based."
   [index]
-  (:nightincode/var-usage-row-index index))
+  (:nightincode/IVD_ index))
 
 
 ;; -- Queries
@@ -377,7 +377,7 @@
 
         {:keys [analysis]} result
 
-        var-indexes (var-indexes analysis)]
+        var-indexes (index-V analysis)]
 
     (swap! state-ref
       (fn [state]
