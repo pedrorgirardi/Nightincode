@@ -463,9 +463,15 @@
                                    (= from to)))
                                (map
                                  (fn [{:keys [to alias name]}]
-                                   {:label (if (= to 'clojure.core)
+                                   {:label (cond
+                                             (contains? #{'clojure.core 'cljs.core} to)
                                              (str name)
-                                             (format "%s/%s" (or alias to) name))
+
+                                             (or alias to)
+                                             (format "%s/%s" (or alias to) name)
+
+                                             :else
+                                             (str name))
                                     :kind 6})))
                              (IVU index))
 
