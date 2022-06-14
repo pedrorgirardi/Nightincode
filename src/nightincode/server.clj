@@ -446,22 +446,20 @@
                       (map
                         (fn [[sym _]]
                           ;; Var name only because it's a document definition.
-                          (merge {:label (name sym)
-                                  :kind 6}
+                          {:label (format "%s" (name sym))
+                           :kind 6}))
+                      (IVD index))]
+
+    (lsp/response request (merge {:items completions}
                             (when T
-                              ;; Range of text to be replaced by new text.
-                              {:textEdit
-                               {:newText (name sym)
-                                :range
+                              {:itemDefaults
+                               {:editRange
                                 {:start
                                  {:line cursor-line
                                   :character (dec (:name-col T))}
                                  :end
                                  {:line cursor-line
-                                  :character (dec (:name-end-col T))}}}}))))
-                      (IVD index))]
-
-    (lsp/response request completions)))
+                                  :character (dec (:name-end-col T))}}}})))))
 
 
 ;; ---------------------------------------------------------
