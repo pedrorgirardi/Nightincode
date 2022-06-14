@@ -444,16 +444,37 @@
         T (?T_ index row+col)
 
         ;; Completions from ClojureDocs (clojure.core only).
-        completions @clojuredocs-completion-delay
+        completions-clojuredocs @clojuredocs-completion-delay
 
         ;; Completions with document definitions.
-        completions (into []
-                      (map
-                        (fn [[sym _]]
-                          ;; Var name only because it's a document definition.
-                          {:label (name sym)
-                           :kind 6}))
-                      (IVD index))]
+        completions-definitions (into []
+                                  (map
+                                    (fn [[sym _]]
+                                      ;; Var name only because it's a document definition.
+                                      {:label (name sym)
+                                       :kind 6}))
+                                  (IVD index))
+
+        ;; Completions with document usages - exclude "self definitions".
+        completions-usages (into #{}
+                             (comp
+                               (mapcat val)
+                               (remove
+                                 (fn [{:keys [from to]}]
+                                   (= from to)))
+                               (map
+                                 (fn [{:keys [to alias name]}]
+                                   {:label (if (= to 'clojure.core)
+                                             (str name)
+                                             (format "%s/%s" (or alias to) name))
+                                    :kind 6})))
+                             (IVU index))
+
+        completions (reduce
+                      into
+                      []
+                      [completions-definitions
+                       completions-usages])]
 
     (lsp/response request (merge {:items completions}
                             (when T
@@ -533,6 +554,7 @@
   (IVU_ (_text-document-index @state-ref {:uri lispi-core-uri}))
   (?VU_ (_text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
 
+  (IVU (_text-document-index @state-ref {:uri lispi-core-uri}))
 
   (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
 
