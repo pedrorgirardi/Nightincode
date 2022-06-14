@@ -36,10 +36,10 @@
 ;; ---------------------------------------------------------
 
 
-(defn writer ^Writer [state]
+(defn _writer ^Writer [state]
   (:nightincode/writer state))
 
-(defn repl-port [state]
+(defn _repl-port [state]
   (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
     (.getLocalPort server-socket)))
 
@@ -57,7 +57,7 @@
   (:text textDocument))
 
 
-(defn text-document-index [state textDocument]
+(defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
 (defn analyze-document
@@ -349,11 +349,11 @@
     (swap! state-ref merge {:LSP/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
-    (lsp/write (writer @state-ref)
+    (lsp/write (_writer @state-ref)
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params {:type 4
-                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (repl-port @state-ref))}})))
+                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
 
 (defmethod lsp/handle "shutdown" [request]
 
@@ -436,7 +436,7 @@
 
         cursor-line (get-in request [:params :position :line])
 
-        index (text-document-index @state-ref textDocument)
+        index (_text-document-index @state-ref textDocument)
 
         row+col [(inc (get-in request [:params :position :line]))
                  (inc (get-in request [:params :position :character]))]
@@ -527,14 +527,14 @@
 
   (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
 
-  (IVD_ (text-document-index @state-ref {:uri lispi-core-uri}))
-  (?VD_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
+  (IVD_ (_text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VD_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
 
-  (IVU_ (text-document-index @state-ref {:uri lispi-core-uri}))
-  (?VU_ (text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
+  (IVU_ (_text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VU_ (_text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
 
 
-  (meta (?T_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
+  (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
 
 
   (def document-text
@@ -547,10 +547,11 @@
 
   (keys index)
 
-  (lsp/write (writer @state-ref)
+  (lsp/write (_writer @state-ref)
     {:jsonrpc "2.0"
      :method "window/showMessage"
      :params {:type 3
               :message "Hello!"}})
+
 
   )
