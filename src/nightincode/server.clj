@@ -39,23 +39,6 @@
    :output
    {:canonical-paths true}})
 
-(def state-ref (atom nil))
-
-
-;; ---------------------------------------------------------
-
-
-(defn _writer ^Writer [state]
-  (:nightincode/writer state))
-
-(defn _repl-port [state]
-  (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
-    (.getLocalPort server-socket)))
-
-
-;; ---------------------------------------------------------
-
-
 (defn text-document-uri [textDocument]
   (:uri textDocument))
 
@@ -66,8 +49,44 @@
   (:text textDocument))
 
 
-(defn _text-document-index [state textDocument]
-  (get-in state [:nightincode/index (text-document-uri textDocument)]))
+(defn clojuredocs
+  "ClojureDocs.org database."
+  []
+  (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword))
+
+(defn clojuredocs-completion []
+  (into []
+    (comp
+      (filter
+        (fn [m]
+          (= (:ns m) "clojure.core")))
+      (map
+        (fn [{var-ns :ns
+              var-name :name
+              var-args :arglists
+              var-doc :doc :as m}]
+          (let [completion-item-kind {"var" 6
+                                      "function" 3
+                                      "macro" 3}
+
+                arglists (str/join " " (map #(str "[" % "]") var-args))
+
+                detail (format "%s/%s %s" var-ns var-name arglists)
+                detail (if (str/blank? var-doc)
+                         detail
+                         (format "%s\n\n%s" detail var-doc))]
+
+            {:label var-name
+             :kind (completion-item-kind (:type m))
+             :detail detail}))))
+    (:vars (clojuredocs))))
+
+(def clojuredocs-completion-delay
+  (delay (clojuredocs-completion)))
+
+
+;; ---------------------------------------------------------
+
 
 (defn analyze
   "Analyze Clojure/Script forms with clj-kondo.
@@ -217,6 +236,21 @@
      :nightincode/LU]))
 
 
+;; ---------------------------------------------------------
+
+
+(def state-ref (atom nil))
+
+(defn _writer ^Writer [state]
+  (:nightincode/writer state))
+
+(defn _repl-port [state]
+  (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
+    (.getLocalPort server-socket)))
+
+(defn _text-document-index [state textDocument]
+  (get-in state [:nightincode/index (text-document-uri textDocument)]))
+
 (defn _index-document [state {:keys [uri text]}]
   (let [result (analyze {:uri uri
                          :text text})
@@ -233,40 +267,8 @@
     state))
 
 
-(defn clojuredocs
-  "ClojureDocs.org database."
-  []
-  (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword))
+;; ---------------------------------------------------------
 
-(defn clojuredocs-completion []
-  (into []
-    (comp
-      (filter
-        (fn [m]
-          (= (:ns m) "clojure.core")))
-      (map
-        (fn [{var-ns :ns
-              var-name :name
-              var-args :arglists
-              var-doc :doc :as m}]
-          (let [completion-item-kind {"var" 6
-                                      "function" 3
-                                      "macro" 3}
-
-                arglists (str/join " " (map #(str "[" % "]") var-args))
-
-                detail (format "%s/%s %s" var-ns var-name arglists)
-                detail (if (str/blank? var-doc)
-                         detail
-                         (format "%s\n\n%s" detail var-doc))]
-
-            {:label var-name
-             :kind (completion-item-kind (:type m))
-             :detail detail}))))
-    (:vars (clojuredocs))))
-
-(def clojuredocs-completion-delay
-  (delay (clojuredocs-completion)))
 
 (defmethod lsp/handle "initialize" [request]
 
@@ -443,9 +445,6 @@
 
         T (?T_ index row+col)
 
-        ;; Completions from ClojureDocs (clojure.core only).
-        completions-clojuredocs @clojuredocs-completion-delay
-
         ;; Completions with document definitions.
         completions-definitions (into []
                                   (map
@@ -486,10 +485,6 @@
                                  :end
                                  {:line cursor-line
                                   :character (dec (:name-end-col T))}}}})))))
-
-
-;; ---------------------------------------------------------
-
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
