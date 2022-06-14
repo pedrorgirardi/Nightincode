@@ -30,6 +30,15 @@
 (set! *warn-on-reflection* true)
 
 
+(def default-clj-kondo-config
+  {:analysis
+   {:arglists true
+    :locals true
+    :keywords true
+    :java-class-usages true}
+   :output
+   {:canonical-paths true}})
+
 (def state-ref (atom nil))
 
 
@@ -61,22 +70,15 @@
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
 (defn analyze
-  ([params]
-   (analyze
-     {:analysis
-      {:arglists true
-       :locals true
-       :keywords true
-       :java-class-usages true}
-      :output
-      {:canonical-paths true}}
-     params))
-  ([config {:keys [uri text]}]
-   (with-in-str text
-     (clj-kondo/run!
-       {:lint ["-"]
-        :filename (.getPath (URI. uri))
-        :config config}))))
+  "Analyze Clojure/Script forms with clj-kondo.
+
+  `uri` is used to report the filename."
+  [{:keys [uri text config]}]
+  (with-in-str text
+    (clj-kondo/run!
+      {:lint ["-"]
+       :filename (.getPath (URI. uri))
+       :config (or config default-clj-kondo-config)})))
 
 (defn index-V
   "Index Var definitions and usages by symbol and row."
