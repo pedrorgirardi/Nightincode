@@ -429,8 +429,7 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
-        line (get-in request [:params :position :line])
-        character (get-in request [:params :position :character])
+        cursor-line (get-in request [:params :position :line])
 
         index (text-document-index @state-ref textDocument)
 
@@ -450,40 +449,17 @@
                           (merge {:label (name sym)
                                   :kind 6}
                             (when T
+                              ;; Range of text to be replaced by new text.
                               {:textEdit
                                {:newText (name sym)
                                 :range
                                 {:start
-                                 {:line line
+                                 {:line cursor-line
                                   :character (dec (:name-col T))}
                                  :end
-                                 {:line line
+                                 {:line cursor-line
                                   :character (dec (:name-end-col T))}}}}))))
-                      (IVD index))
-
-        #_#_completions [{:label "foobar-baz1"
-                          :textEdit
-                          {:newText "foobar-baz1"
-                           :range
-                           {:start
-                            {:line line
-                             :character 0}
-
-                            :end
-                            {:line line
-                             :character 11}}}}
-
-                         {:label "foobar-baz2"
-                          :textEdit
-                          {:newText "foobar-baz2"
-                           :range
-                           {:start
-                            {:line line
-                             :character 0}
-
-                            :end
-                            {:line line
-                             :character 11}}}}]]
+                      (IVD index))]
 
     (lsp/response request completions)))
 
