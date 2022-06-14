@@ -214,6 +214,25 @@
      :nightincode/LD
      :nightincode/LU]))
 
+
+(defn _index-document [state textDocument]
+  (let [document-uri (text-document-uri textDocument)
+        document-text (text-document-text textDocument)
+
+        result (analyze-document textDocument)
+        result (select-keys result [:findings :analysis :summary])
+
+        {:keys [analysis]} result
+
+        var-indexes (index-V analysis)
+
+        state (assoc-in state [:clj-kondo/result document-uri] result)
+        state (assoc-in state [:nightincode/document document-uri] document-text)
+        state (update-in state [:nightincode/index document-uri] merge var-indexes)]
+
+    state))
+
+
 (defn clojuredocs
   "ClojureDocs.org database."
   []
@@ -367,41 +386,27 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-  (let [textDocument (get-in notification [:params :textDocument])
+  (let [textDocument (get-in notification [:params :textDocument])]
+    (swap! state-ref _index-document textDocument)))
 
-        document-uri (text-document-uri textDocument)
-        document-text (text-document-text textDocument)
-
-        result (analyze-document textDocument)
-        result (select-keys result [:findings :analysis :summary])
-
-        {:keys [analysis]} result
-
-        var-indexes (index-V analysis)]
-
-    (swap! state-ref
-      (fn [state]
-        (let [state (assoc-in state [:clj-kondo/result document-uri] result)
-              state (assoc-in state [:nightincode/document document-uri] document-text)
-              state (update-in state [:nightincode/index document-uri] merge var-indexes)]
-          state)))))
-
-(defmethod lsp/handle "textDocument/didChange" [_notification]
+(defmethod lsp/handle "textDocument/didChange" [notification]
 
   ;; The document change notification is sent from the client to the server to signal changes to a text document.
   ;; Before a client can change a text document it must claim ownership of its content using the textDocument/didOpen notification.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
 
-  )
+  (let [textDocument (get-in notification [:params :textDocument])]
+    (swap! state-ref _index-document textDocument)))
 
-(defmethod lsp/handle "textDocument/didSave" [_notification]
+(defmethod lsp/handle "textDocument/didSave" [notification]
 
   ;; The document save notification is sent from the client to the server when the document was saved in the client.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didSave
 
-  )
+  (let [textDocument (get-in notification [:params :textDocument])]
+    (swap! state-ref _index-document textDocument)))
 
 (defmethod lsp/handle "textDocument/didClose" [notification]
 
