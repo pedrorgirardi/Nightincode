@@ -451,7 +451,7 @@
                       (map
                         (fn [[sym _]]
                           ;; Var name only because it's a document definition.
-                          {:label (format "%s" (name sym))
+                          {:label (name sym)
                            :kind 6}))
                       (IVD index))]
 
