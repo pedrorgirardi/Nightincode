@@ -132,25 +132,35 @@
 
     index))
 
-(defn VD
+
+;; -- Indexes
+
+(defn IVD
   "Var definitions indexed by symbol."
   [index]
   (:nightincode/var-definition-index index))
 
-(defn VD_
-  "Var definitions indexed by row."
+(defn IVD_
+  "Var definitions indexed by row.
+
+  Note: row is not zero-based."
   [index]
   (:nightincode/var-definition-row-index index))
 
-(defn VU
+(defn IVU
   "Var usages indexed by symbol."
   [index]
   (:nightincode/var-usage-index index))
 
-(defn VU_
-  "Var usages indexed by row."
+(defn IVU_
+  "Var usages indexed by row.
+
+  Note: row is not zero-based."
   [index]
   (:nightincode/var-usage-row-index index))
+
+
+;; -- Queries
 
 (defn ?VD_
   "Returns Var definition at location, or nil."
@@ -160,7 +170,7 @@
       (when (<= name-col col name-end-col)
         (reduced var-definition)))
     nil
-    ((VD_ index) row)))
+    ((IVD_ index) row)))
 
 (defn ?VU_
   "Returns Var usage at location, or nil."
@@ -170,22 +180,31 @@
       (when (<= name-col col name-end-col)
         (reduced var-usage)))
     nil
-    ((VU_ index) row)))
+    ((IVU_ index) row)))
 
-(defn T_
-  "Returns T at location, or nil."
+(defn ?T_
+  "Returns T at location, or nil.
+
+  Where T is one of:
+   - Namespace definition
+   - Namespace usages
+   - Var definition
+   - Var usage
+   - Local definition
+   - Local usage
+   - Keyword"
   [index row+col]
   (reduce
     (fn [_ k]
       (case k
         :nightincode/VD
         (when-let [var-definition (?VD_ index row+col)]
-          (reduced (with-meta var-definition {:nightincode/T :nightincode/VD
+          (reduced (with-meta var-definition {:nightincode/TT :nightincode/VD
                                               :nightincode/row+col row+col})))
 
         :nightincode/VU
         (when-let [var-usage (?VU_ index row+col)]
-          (reduced (with-meta var-usage {:nightincode/T :nightincode/VU
+          (reduced (with-meta var-usage {:nightincode/TT :nightincode/VU
                                          :nightincode/row+col row+col})))
 
         nil))
@@ -422,7 +441,7 @@
                           ;; Var name only because it's a document definition.
                           {:label (name sym)
                            :kind 6}))
-                      (VD index))]
+                      (IVD index))]
 
     (lsp/response request completions)))
 
@@ -487,9 +506,15 @@
 
   (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
 
-  (VU_ (text-document-index @state-ref {:uri lispi-core-uri}))
+  (IVD_ (text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VD_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
 
-  (meta (T_ (text-document-index @state-ref {:uri lispi-core-uri}) [120 13]))
+  (IVU_ (text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VU_ (text-document-index @state-ref {:uri lispi-core-uri}) [49 30])
+
+
+  (meta (?T_ (text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
+
 
   (def document-text
     (second (first document)))
