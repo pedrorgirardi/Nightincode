@@ -133,26 +133,28 @@
     index))
 
 (defn VD
-  "Var definitions by symbol index."
+  "Var definitions indexed by symbol."
   [index]
   (:nightincode/var-definition-index index))
 
 (defn VD_
-  "Var definitions by row index."
+  "Var definitions indexed by row."
   [index]
   (:nightincode/var-definition-row-index index))
 
 (defn VU
-  "Var usages by symbol index."
+  "Var usages indexed by symbol."
   [index]
   (:nightincode/var-usage-index index))
 
 (defn VU_
-  "Var usages by row index."
+  "Var usages indexed by row."
   [index]
   (:nightincode/var-usage-row-index index))
 
-(defn ?VU [index [row col]]
+(defn ?VU
+  "Query Var usage for location."
+  [index [row col]]
   (reduce
     (fn [_ {:keys [name-col name-end-col] :as var-usage}]
       (when (<= name-col col name-end-col)
@@ -391,45 +393,18 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
-        position-line (get-in request [:params :position :line])
-        position-character (get-in request [:params :position :character])
-
         index (text-document-index @state-ref textDocument)
-
-        row+col [(inc position-line) (inc position-character)]
-
-        T (T index row+col)
 
         ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
 
         ;; Completions with document definitions.
-        completions (into []
+        completions (into completions
                       (map
                         (fn [[sym _]]
-                          (let [;; Var name only because it's a document definition.
-                                s (name sym)
-
-                                insert {:start
-                                        {:line position-line
-                                         :character position-character}
-                                        :end
-                                        {:line position-line
-                                         :character (count s)}}]
-
-                            {:label s
-                             :kind 6
-                             :textEdit
-                             (merge {:newText s
-                                     :insert insert}
-                               (when T
-                                 {:replace
-                                  {:start
-                                   {:line position-line
-                                    :character (dec (:name-col T))}
-                                   :end
-                                   {:line position-line
-                                    :character (:name-end-col T)}}}))})))
+                          ;; Var name only because it's a document definition.
+                          {:label (name sym)
+                           :kind 6}))
                       (VD index))]
 
     (lsp/response request completions)))
