@@ -152,20 +152,20 @@
   [index]
   (:nightincode/var-usage-row-index index))
 
-(defn ?VU [VU_ [row col]]
+(defn ?VU [index [row col]]
   (reduce
     (fn [_ {:keys [name-col name-end-col] :as var-usage}]
       (when (<= name-col col name-end-col)
         (reduced var-usage)))
     nil
-    (VU_ row)))
+    ((VU_ index) row)))
 
 (defn T [index row+col]
   (reduce
     (fn [_ k]
       (case k
         :nightincode/VU
-        (when-let [var-usage (?VU (VU_ index) row+col)]
+        (when-let [var-usage (?VU index row+col)]
           (reduced (with-meta var-usage {:nightincode/T :nightincode/VU
                                          :nightincode/row+col row+col})))
 
@@ -396,7 +396,9 @@
 
         index (text-document-index @state-ref textDocument)
 
-        T' (T index [position-line position-character])
+        row+col [(inc position-line) (inc position-character)]
+
+        T (T index row+col)
 
         ;; Completions from ClojureDocs (clojure.core only).
         completions @clojuredocs-completion-delay
@@ -406,21 +408,30 @@
                       (map
                         (fn [[sym _]]
                           (let [;; Var name only because it's a document definition.
-                                s (name sym)]
+                                s (name sym)
 
-                            (merge {:label s
-                                    :kind 6}
-                              (when T'
-                                {:textEdit
-                                 {:nextText s
-                                  :range
+                                insert {:start
+                                        {:line position-line
+                                         :character position-character}
+                                        :end
+                                        {:line position-line
+                                         :character (count s)}}]
+
+                            {:label s
+                             :kind 6
+                             :textEdit
+                             (merge {:newText s
+                                     :insert insert}
+                               (when T
+                                 {:replace
                                   {:start
                                    {:line position-line
-                                    :character (:name-col T')}
+                                    :character (dec (:name-col T))}
                                    :end
                                    {:line position-line
-                                    :character (:name-end-col T')}}}})))))
+                                    :character (:name-end-col T)}}}))})))
                       (VD index))]
+
     (lsp/response request completions)))
 
 
@@ -482,9 +493,11 @@
       {:line 119
        :character 40}}})
 
-  (VU_ (text-document-index @state-ref {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}))
+  (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
 
-  (meta (T (text-document-index @state-ref {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}) [119 40]))
+  (VU_ (text-document-index @state-ref {:uri lispi-core-uri}))
+
+  (meta (T (text-document-index @state-ref {:uri lispi-core-uri}) [120 13]))
 
   (def document-text
     (second (first document)))
