@@ -60,9 +60,9 @@
 (defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
-(defn analyze-document
-  ([textDocument]
-   (analyze-document
+(defn analyze
+  ([params]
+   (analyze
      {:analysis
       {:arglists true
        :locals true
@@ -70,13 +70,13 @@
        :java-class-usages true}
       :output
       {:canonical-paths true}}
-     textDocument))
-  ([config textDocument]
-   ;; TextDocumentPositionParams
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentPositionParams
-   (clj-kondo/run!
-     {:lint [(text-document-path textDocument)]
-      :config config})))
+     params))
+  ([config {:keys [uri text]}]
+   (with-in-str text
+     (clj-kondo/run!
+       {:lint ["-"]
+        :filename (.getPath (URI. uri))
+        :config config}))))
 
 (defn index-V
   "Index Var definitions and usages by symbol and row."
@@ -215,20 +215,19 @@
      :nightincode/LU]))
 
 
-(defn _index-document [state textDocument]
-  (let [document-uri (text-document-uri textDocument)
-        document-text (text-document-text textDocument)
+(defn _index-document [state {:keys [uri text]}]
+  (let [result (analyze {:uri uri
+                         :text text})
 
-        result (analyze-document textDocument)
         result (select-keys result [:findings :analysis :summary])
 
         {:keys [analysis]} result
 
         var-indexes (index-V analysis)
 
-        state (assoc-in state [:clj-kondo/result document-uri] result)
-        state (assoc-in state [:nightincode/document document-uri] document-text)
-        state (update-in state [:nightincode/index document-uri] merge var-indexes)]
+        state (assoc-in state [:clj-kondo/result uri] result)
+        state (assoc-in state [:nightincode/document uri] text)
+        state (update-in state [:nightincode/index uri] merge var-indexes)]
 
     state))
 
@@ -387,7 +386,8 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
   (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref _index-document textDocument)))
+    (swap! state-ref _index-document {:uri (text-document-uri textDocument)
+                                      :text (text-document-text textDocument)})))
 
 (defmethod lsp/handle "textDocument/didChange" [notification]
 
@@ -397,16 +397,16 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
 
   (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref _index-document textDocument)))
+    (swap! state-ref _index-document {:uri (text-document-uri textDocument)
+                                      :text (get-in notification [:params :contentChanges 0 :text])})))
 
-(defmethod lsp/handle "textDocument/didSave" [notification]
+(defmethod lsp/handle "textDocument/didSave" [_notification]
 
   ;; The document save notification is sent from the client to the server when the document was saved in the client.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didSave
 
-  (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref _index-document textDocument)))
+  nil)
 
 (defmethod lsp/handle "textDocument/didClose" [notification]
 
