@@ -402,32 +402,24 @@
         completions @clojuredocs-completion-delay
 
         ;; Completions with document definitions.
-        completions (into completions
+        completions (into []
                       (map
                         (fn [[sym _]]
                           (let [;; Var name only because it's a document definition.
-                                s (name sym)
+                                s (name sym)]
 
-                                insert {:start
-                                        {:line position-line
-                                         :character position-character}
-                                        :end
-                                        {:line position-line
-                                         :character (dec (count s))}}]
-                            {:label s
-                             :kind 6
-                             :textEdit
-                             {:newText s
-                              :insert insert
-                              :replace
-                              (if T'
-                                {:start
-                                 {:line position-line
-                                  :character (:name-col T')}
-                                 :end
-                                 {:line position-line
-                                  :character (:name-end-col T')}}
-                                insert)}})))
+                            (merge {:label s
+                                    :kind 6}
+                              (when T'
+                                {:textEdit
+                                 {:nextText s
+                                  :range
+                                  {:start
+                                   {:line position-line
+                                    :character (:name-col T')}
+                                   :end
+                                   {:line position-line
+                                    :character (:name-end-col T')}}}})))))
                       (VD index))]
     (lsp/response request completions)))
 
