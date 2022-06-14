@@ -152,8 +152,18 @@
   [index]
   (:nightincode/var-usage-row-index index))
 
-(defn ?VU
-  "Query Var usage for location."
+(defn ?VD_
+  "Returns Var definition at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {:keys [name-col name-end-col] :as var-definition}]
+      (when (<= name-col col name-end-col)
+        (reduced var-definition)))
+    nil
+    ((VD_ index) row)))
+
+(defn ?VU_
+  "Returns Var usage at location, or nil."
   [index [row col]]
   (reduce
     (fn [_ {:keys [name-col name-end-col] :as var-usage}]
@@ -162,12 +172,19 @@
     nil
     ((VU_ index) row)))
 
-(defn T [index row+col]
+(defn T_
+  "Returns T at location, or nil."
+  [index row+col]
   (reduce
     (fn [_ k]
       (case k
+        :nightincode/VD
+        (when-let [var-definition (?VD_ index row+col)]
+          (reduced (with-meta var-definition {:nightincode/T :nightincode/VD
+                                              :nightincode/row+col row+col})))
+
         :nightincode/VU
-        (when-let [var-usage (?VU index row+col)]
+        (when-let [var-usage (?VU_ index row+col)]
           (reduced (with-meta var-usage {:nightincode/T :nightincode/VU
                                          :nightincode/row+col row+col})))
 
@@ -472,7 +489,7 @@
 
   (VU_ (text-document-index @state-ref {:uri lispi-core-uri}))
 
-  (meta (T (text-document-index @state-ref {:uri lispi-core-uri}) [120 13]))
+  (meta (T_ (text-document-index @state-ref {:uri lispi-core-uri}) [120 13]))
 
   (def document-text
     (second (first document)))
