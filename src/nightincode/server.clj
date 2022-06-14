@@ -226,7 +226,6 @@
         var-indexes (index-V analysis)
 
         state (assoc-in state [:clj-kondo/result uri] result)
-        state (assoc-in state [:nightincode/document uri] text)
         state (update-in state [:nightincode/index uri] merge var-indexes)]
 
     state))
@@ -420,7 +419,6 @@
       (fn [state]
         (let [text-document-uri (text-document-uri textDocument)
 
-              state (update state :nightincode/document dissoc text-document-uri)
               state (update state :nightincode/index dissoc text-document-uri)
               state (update state :clj-kondo/result dissoc text-document-uri)]
 
