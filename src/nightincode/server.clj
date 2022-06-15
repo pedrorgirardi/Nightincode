@@ -579,7 +579,9 @@
                                        (fn [[k _]]
                                          {:label (str k)
                                           :kind 14}))
-                                     (IKU index))
+                                     ;; Only the keyword is necessary,
+                                     ;; so it's okay to combine indexes.
+                                     (merge (IKD index) (IKU index)))
 
         completions (reduce
                       into
