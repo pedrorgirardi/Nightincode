@@ -544,6 +544,8 @@
 
         T (?T_ index row+col)
 
+        ;; TODO: Extract completions.
+
         ;; Completions with document definitions.
         completions-definitions (into []
                                   (map
