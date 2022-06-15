@@ -574,11 +574,19 @@
                                     :kind 6})))
                              (IVU index))
 
+        completions-keyword-usages (into []
+                                     (map
+                                       (fn [[k _]]
+                                         {:label (str k)
+                                          :kind 14}))
+                                     (IKU index))
+
         completions (reduce
                       into
                       []
                       [completions-definitions
-                       completions-usages])]
+                       completions-usages
+                       completions-keyword-usages])]
 
     (lsp/response request (merge {:items completions}
                             (when T
