@@ -746,13 +746,17 @@
   (start
     {:reader (lsp/buffered-reader System/in)
      :writer (lsp/buffered-writer System/out)
-     :trace (fn [{:keys [header status content error jsonrpc-str] :as m}]
+     :trace (fn [{:keys [header status content error]}]
               (case status
                 :message-decoded
                 (log/debug (select-keys content [:id :method]))
 
-                :message-error
-                (log/error error (pr-str header) "\n" (pr-str jsonrpc-str) "\n")
+                ;; Note: `content` is a string when there's a decoding error.
+                :message-decode-error
+                (log/error error
+                  {:header header
+                   :content content
+                   :content-length (alength (.getBytes ^String content))})
 
                 nil))}))
 
