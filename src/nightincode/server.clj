@@ -48,6 +48,8 @@
 (defn text-document-text [textDocument]
   (:text textDocument))
 
+(defn filepath-uri ^URI [filepath]
+  (->  (io/file filepath) .toPath .toUri))
 
 (defn clojuredocs
   "ClojureDocs.org database."
@@ -335,6 +337,12 @@
      :nightincode/KU
      :nightincode/KD]))
 
+(defn TT [T]
+  (:nightincode/TT (meta T)))
+
+(defn VU-symbol [{:keys [to name]}]
+  (symbol (str to) (str name)))
+
 
 ;; ---------------------------------------------------------
 
@@ -548,20 +556,45 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
 
-  (let [textDocument (get-in request [:params :textDocument])
+  (try
+    (let [textDocument (get-in request [:params :textDocument])
 
-        cursor-line (get-in request [:params :position :line])
+          cursor-line (get-in request [:params :position :line])
+          cursor-character (get-in request [:params :position :character])
 
-        index (_text-document-index @state-ref textDocument)
+          index (_text-document-index @state-ref textDocument)
 
-        row+col [(inc (get-in request [:params :position :line]))
-                 (inc (get-in request [:params :position :character]))]
+          row+col [(inc cursor-line) (inc cursor-character)]
 
-        T (?T_ index row+col)
+          T (?T_ index row+col)
 
-        ]
+          D (case (TT T)
+              :nightincode/VU
+              (map
+                (fn [{:keys [filename
+                             name-row
+                             name-end-row
+                             name-col
+                             name-end-col]}]
+                  {:uri (.toString (filepath-uri filename))
+                   :range
+                   {:start
+                    {:line (dec name-row)
+                     :character (dec name-col)}
+                    :end
+                    {:line (dec name-end-row)
+                     :character (dec name-end-col)}}})
+                ((IVD index) (VU-symbol T)))
 
-    (lsp/response request nil)))
+              nil)]
+
+      (lsp/response request (seq D)))
+
+    (catch Exception ex
+      (lsp/error-response request
+        ;; A request failed but it was syntactically correct
+        {:code -32803
+         :message (format "Sorry. Nightincode failed to find a definition. (%s)"(ex-message ex))}))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
@@ -722,6 +755,7 @@
   (IVU_ (_text-document-index @state-ref {:uri lispi-core-uri}))
   (?VU_ (_text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
 
+  (IVD (_text-document-index @state-ref {:uri lispi-core-uri}))
   (IVU (_text-document-index @state-ref {:uri lispi-core-uri}))
 
   (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
