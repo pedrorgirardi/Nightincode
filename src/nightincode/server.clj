@@ -238,6 +238,7 @@
 
 ;; ---------------------------------------------------------
 
+;; -- Functions to read and write from and to state
 
 (def state-ref (atom nil))
 
@@ -251,18 +252,10 @@
 (defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
-(defn _index-document [state {:keys [uri text]}]
-  (let [result (analyze {:uri uri
-                         :text text})
+(defn !index-document [state {:keys [uri analysis] }]
+  (let [index-V (index-V analysis)
 
-        result (select-keys result [:findings :analysis :summary])
-
-        {:keys [analysis]} result
-
-        var-indexes (index-V analysis)
-
-        state (assoc-in state [:clj-kondo/result uri] result)
-        state (update-in state [:nightincode/index uri] merge var-indexes)]
+        state (update-in state [:nightincode/index uri] merge index-V)]
 
     state))
 
@@ -388,9 +381,16 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-  (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref _index-document {:uri (text-document-uri textDocument)
-                                      :text (text-document-text textDocument)})))
+  (let [textDocument (get-in notification [:params :textDocument])
+
+        text-document-uri (text-document-uri textDocument)
+        text-document-text (text-document-text textDocument)
+
+        result (analyze {:uri text-document-uri
+                         :text text-document-text})]
+
+    (swap! state-ref !index-document {:uri text-document-uri
+                                      :analysis (:analysis result)})))
 
 (defmethod lsp/handle "textDocument/didChange" [notification]
 
@@ -399,9 +399,18 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
 
-  (let [textDocument (get-in notification [:params :textDocument])]
-    (swap! state-ref _index-document {:uri (text-document-uri textDocument)
-                                      :text (get-in notification [:params :contentChanges 0 :text])})))
+  (let [textDocument (get-in notification [:params :textDocument])
+
+        text-document-uri (text-document-uri textDocument)
+
+        ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
+        text-document-text (get-in notification [:params :contentChanges 0 :text])
+
+        result (analyze {:uri text-document-uri
+                         :text text-document-text})]
+
+    (swap! state-ref !index-document {:uri text-document-uri
+                                      :analysis (:analysis result)})))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 
