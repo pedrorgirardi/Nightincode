@@ -592,7 +592,6 @@
 
     (catch Exception ex
       (lsp/error-response request
-        ;; A request failed but it was syntactically correct
         {:code -32803
          :message (format "Sorry. Nightincode failed to find a definition. (%s)"(ex-message ex))}))))
 
@@ -602,75 +601,80 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
 
-  (let [textDocument (get-in request [:params :textDocument])
+  (try
+    (let [textDocument (get-in request [:params :textDocument])
 
-        cursor-line (get-in request [:params :position :line])
+          cursor-line (get-in request [:params :position :line])
 
-        index (_text-document-index @state-ref textDocument)
+          index (_text-document-index @state-ref textDocument)
 
-        row+col [(inc (get-in request [:params :position :line]))
-                 (inc (get-in request [:params :position :character]))]
+          row+col [(inc (get-in request [:params :position :line]))
+                   (inc (get-in request [:params :position :character]))]
 
-        T (?T_ index row+col)
+          T (?T_ index row+col)
 
-        ;; TODO: Extract completions.
+          ;; TODO: Extract completions.
 
-        ;; Completions with document definitions.
-        VD-completions (into []
-                         (map
-                           (fn [[sym _]]
-                             ;; Var name only because it's a document definition.
-                             {:label (name sym)
-                              :kind 6}))
-                         (IVD index))
-
-        ;; Completions with document usages - exclude "self definitions".
-        VU-completions (into #{}
-                         (comp
-                           (mapcat val)
-                           (remove
-                             (fn [{:keys [from to]}]
-                               (= from to)))
+          ;; Completions with document definitions.
+          VD-completions (into []
                            (map
-                             (fn [{:keys [to alias name]}]
-                               {:label (cond
-                                         (contains? #{'clojure.core 'cljs.core} to)
-                                         (str name)
+                             (fn [[sym _]]
+                               ;; Var name only because it's a document definition.
+                               {:label (name sym)
+                                :kind 6}))
+                           (IVD index))
 
-                                         (or alias to)
-                                         (format "%s/%s" (or alias to) name)
+          ;; Completions with document usages - exclude "self definitions".
+          VU-completions (into #{}
+                           (comp
+                             (mapcat val)
+                             (remove
+                               (fn [{:keys [from to]}]
+                                 (= from to)))
+                             (map
+                               (fn [{:keys [to alias name]}]
+                                 {:label (cond
+                                           (contains? #{'clojure.core 'cljs.core} to)
+                                           (str name)
 
-                                         :else
-                                         (str name))
-                                :kind 6})))
-                         (IVU index))
+                                           (or alias to)
+                                           (format "%s/%s" (or alias to) name)
 
-        K-completions (into []
-                        (map
-                          (fn [[k _]]
-                            {:label (str k)
-                             :kind 14}))
-                        ;; Only the keyword is necessary,
-                        ;; so it's okay to combine indexes.
-                        (merge (IKD index) (IKU index)))
+                                           :else
+                                           (str name))
+                                  :kind 6})))
+                           (IVU index))
 
-        completions (reduce
-                      into
-                      []
-                      [VD-completions
-                       VU-completions
-                       K-completions])]
+          K-completions (into []
+                          (map
+                            (fn [[k _]]
+                              {:label (str k)
+                               :kind 14}))
+                          ;; Only the keyword is necessary,
+                          ;; so it's okay to combine indexes.
+                          (merge (IKD index) (IKU index)))
 
-    (lsp/response request (merge {:items completions}
-                            (when T
-                              {:itemDefaults
-                               {:editRange
-                                {:start
-                                 {:line cursor-line
-                                  :character (dec (or (:name-col T) (:col T)))}
-                                 :end
-                                 {:line cursor-line
-                                  :character (dec (or (:name-end-col T) (:end-col T)))}}}})))))
+          completions (reduce
+                        into
+                        []
+                        [VD-completions
+                         VU-completions
+                         K-completions])]
+
+      (lsp/response request (merge {:items completions}
+                              (when T
+                                {:itemDefaults
+                                 {:editRange
+                                  {:start
+                                   {:line cursor-line
+                                    :character (dec (or (:name-col T) (:col T)))}
+                                   :end
+                                   {:line cursor-line
+                                    :character (dec (or (:name-end-col T) (:end-col T)))}}}}))))
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message (format "Sorry. Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
