@@ -126,7 +126,7 @@
 
                         index (update-in index [:nightincode/IVU sym] (fnil conj #{}) usage)
 
-                        index (update-in index [:nightincode/IVD_ var-name-row] (fnil conj []) usage)]
+                        index (update-in index [:nightincode/IVU_ var-name-row] (fnil conj []) usage)]
 
                     index))
                 index
@@ -150,6 +150,47 @@
                     index))
                 index
                 (:var-definitions analysis))]
+
+    index))
+
+(defn index-K
+  "Index keyword definitions (reg) and usages by keyword and row."
+  [analysis]
+  (let [index {;; Definitions indexed by keyword.
+               :nightincode/IKD {}
+
+               ;; Definitions indexed by row.
+               :nightincode/IKD_ {}
+
+               ;; Usages indexed by keyword.
+               :nightincode/IKU {}
+
+               ;; Usages indexed by row.
+               :nightincode/IKU_ {}}
+
+        index (reduce
+                (fn [index keyword-analysis]
+                  (let [{keyword-namespace :ns
+                         keyword-name :name
+                         keyword-row :row
+                         keyword-reg :reg} keyword-analysis
+
+                        k (if keyword-namespace
+                            (keyword (str keyword-namespace) keyword-name)
+                            (keyword keyword-name))]
+
+                    (cond
+                      keyword-reg
+                      (-> index
+                        (update-in [:nightincode/IKD k] (fnil conj #{}) keyword-analysis)
+                        (update-in [:nightincode/IKD_ keyword-row] (fnil conj []) keyword-analysis))
+
+                      :else
+                      (-> index
+                        (update-in [:nightincode/IKU k] (fnil conj #{}) keyword-analysis)
+                        (update-in [:nightincode/IKU_ keyword-row] (fnil conj []) keyword-analysis)))))
+                index
+                (:keywords analysis))]
 
     index))
 
@@ -178,7 +219,31 @@
 
   Note: row is not zero-based."
   [index]
-  (:nightincode/IVD_ index))
+  (:nightincode/IVU_ index))
+
+(defn IKD
+  "Keyword definitions indexed by keyword."
+  [index]
+  (:nightincode/IKD index))
+
+(defn IKD_
+  "Keyword definitions indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IKD_ index))
+
+(defn IKU
+  "Keyword usages indexed by keyword."
+  [index]
+  (:nightincode/IKU index))
+
+(defn IKU_
+  "Keyword usages indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IKU_ index))
 
 
 ;; -- Queries
@@ -202,6 +267,28 @@
         (reduced var-usage)))
     nil
     ((IVU_ index) row)))
+
+(defn ?KD_
+  "Returns keyword definition at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {k-col :col
+            k-end-col :end-col :as keyword-definition}]
+      (when (<= k-col col k-end-col)
+        (reduced keyword-definition)))
+    nil
+    ((IKD_ index) row)))
+
+(defn ?KU_
+  "Returns keyword usage at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {k-col :col
+            k-end-col :end-col :as keyword-usage}]
+      (when (<= k-col col k-end-col)
+        (reduced keyword-usage)))
+    nil
+    ((IKU_ index) row)))
 
 (defn ?T_
   "Returns T at location, or nil.
@@ -252,10 +339,13 @@
 (defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
-(defn !index-document [state {:keys [uri analysis] }]
+(defn !index-document [state {:keys [uri analysis]}]
   (let [index-V (index-V analysis)
+        index-K (index-K analysis)
 
-        state (update-in state [:nightincode/index uri] merge index-V)]
+        index (merge index-V index-K)
+
+        state (update-in state [:nightincode/index uri] merge index)]
 
     state))
 
@@ -283,7 +373,7 @@
       ;;
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
-      :completionProvider {:triggerCharacters ["("]}}
+      :completionProvider {:triggerCharacters ["(" ":"]}}
 
      :serverInfo
      {:name "Nightincode"}}))
@@ -534,13 +624,11 @@
   (let [{:keys [LSP/InitializeParams
                 LSP/InitializedParams
 
-                nightincode/document
                 nightincode/index
                 clj-kondo/result]} @state-ref]
 
     (def initialize-params InitializeParams)
     (def initialized-params InitializedParams)
-    (def document document)
     (def index index)
     (def clj-kondo-result result))
 
@@ -558,6 +646,28 @@
 
   (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
 
+  (clj-kondo/run!
+    {:lint [lispi-core-uri]
+     :config default-clj-kondo-config})
+
+  '{:row 42,
+    :col 29,
+    :end-row 42,
+    :end-col 32,
+    :name "as",
+    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
+    :from user}
+
+  '{:end-row 49,
+    :ns lispi,
+    :name "tokens",
+    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
+    :from lispi.core,
+    :col 8,
+    :reg clojure.spec.alpha/def,
+    :end-col 21,
+    :row 49}
+
   (IVD_ (_text-document-index @state-ref {:uri lispi-core-uri}))
   (?VD_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
 
@@ -567,15 +677,6 @@
   (IVU (_text-document-index @state-ref {:uri lispi-core-uri}))
 
   (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
-
-
-  (def document-text
-    (second (first document)))
-
-  (def document-text-split
-    (str/split-lines document-text))
-
-  (get (get document-text-split 91) 16)
 
   (keys index)
 
