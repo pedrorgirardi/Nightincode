@@ -351,6 +351,24 @@
   (symbol (str to) (str name)))
 
 
+(defn V-location
+  "Returns a LSP Location for a Var definition or usage.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
+  [{:keys [filename
+           name-row
+           name-end-row
+           name-col
+           name-end-col]}]
+  {:uri (.toString (filepath-uri filename))
+   :range
+   {:start
+    {:line (dec name-row)
+     :character (dec name-col)}
+    :end
+    {:line (dec name-end-row)
+     :character (dec name-end-col)}}})
+
 ;; ---------------------------------------------------------
 
 ;; -- Functions to read and write from and to state
@@ -577,22 +595,11 @@
           T (?T_ index row+col)
 
           D (case (TT T)
+              :nightincode/VD
+              (map V-location ((IVD index) (VD-ident T)))
+
               :nightincode/VU
-              (map
-                (fn [{:keys [filename
-                             name-row
-                             name-end-row
-                             name-col
-                             name-end-col]}]
-                  {:uri (.toString (filepath-uri filename))
-                   :range
-                   {:start
-                    {:line (dec name-row)
-                     :character (dec name-col)}
-                    :end
-                    {:line (dec name-end-row)
-                     :character (dec name-end-col)}}})
-                ((IVD index) (VU-ident T)))
+              (map V-location ((IVD index) (VU-ident T)))
 
               nil)]
 
@@ -621,20 +628,6 @@
           row+col [(inc cursor-line) (inc cursor-character)]
 
           T (?T_ index row+col)
-
-          V-location (fn [{:keys [filename
-                                  name-row
-                                  name-end-row
-                                  name-col
-                                  name-end-col]}]
-                       {:uri (.toString (filepath-uri filename))
-                        :range
-                        {:start
-                         {:line (dec name-row)
-                          :character (dec name-col)}
-                         :end
-                         {:line (dec name-end-row)
-                          :character (dec name-end-col)}}})
 
           R (case (TT T)
               :nightincode/VD
