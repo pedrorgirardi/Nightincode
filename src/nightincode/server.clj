@@ -340,10 +340,14 @@
 (defn TT [T]
   (:nightincode/TT (meta T)))
 
-(defn VD-symbol [{:keys [ns name]}]
+(defn VD-ident
+  "Var definition identity symbol."
+  [{:keys [ns name]}]
   (symbol (str ns) (str name)))
 
-(defn VU-symbol [{:keys [to name]}]
+(defn VU-ident
+  "Var usage identity symbol."
+  [{:keys [to name]}]
   (symbol (str to) (str name)))
 
 
@@ -588,7 +592,7 @@
                     :end
                     {:line (dec name-end-row)
                      :character (dec name-end-col)}}})
-                ((IVD index) (VU-symbol T)))
+                ((IVD index) (VU-ident T)))
 
               nil)]
 
@@ -634,10 +638,10 @@
 
           R (case (TT T)
               :nightincode/VD
-              (map V-location ((IVU index) (VD-symbol T)))
+              (map V-location ((IVU index) (VD-ident T)))
 
               :nightincode/VU
-              (map V-location ((IVU index) (VU-symbol T)))
+              (map V-location ((IVU index) (VU-ident T)))
 
               nil)]
 
