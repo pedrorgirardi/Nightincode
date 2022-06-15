@@ -30,104 +30,24 @@
 (set! *warn-on-reflection* true)
 
 
+(def default-clj-kondo-config
+  {:analysis
+   {:arglists true
+    :locals true
+    :keywords true
+    :java-class-usages true}
+   :output
+   {:canonical-paths true}})
+
 (defn text-document-uri [textDocument]
   (:uri textDocument))
 
 (defn text-document-path [textDocument]
   (.getPath (URI. (text-document-uri textDocument))))
 
+(defn text-document-text [textDocument]
+  (:text textDocument))
 
-(def state-ref (atom nil))
-
-(defn text-document-index [state textDocument]
-  (get-in state [:nightincode/index (text-document-uri textDocument)]))
-
-
-;; ---------------------------------------------------------
-
-
-(defn writer ^Writer [state]
-  (:nightincode/writer state))
-
-(defn repl-port [state]
-  (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
-    (.getLocalPort server-socket)))
-
-
-;; ---------------------------------------------------------
-
-
-(defn analyze-document
-  ([textDocument]
-   (analyze-document
-     {:analysis
-      {:arglists true
-       :locals true
-       :keywords true
-       :java-class-usages true}
-      :output
-      {:canonical-paths true}}
-     textDocument))
-  ([config textDocument]
-   ;; TextDocumentPositionParams
-   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentPositionParams
-   (clj-kondo/run!
-     {:lint [(text-document-path textDocument)]
-      :config config})))
-
-(defn var-indexes
-  "Index Var definitions and usages by name and row."
-  [analysis]
-  (let [index {;; Definition indexed by name.
-               :nightincode/var-definition-index {}
-
-               ;; Definition indexed by row.
-               :nightincode/var-definition-row-index {}
-
-               ;; Usage indexed by name.
-               :nightincode/var-usage-index {}
-
-               ;; Usage indexed by row.
-               :nightincode/var-usage-row-index {}}
-
-        ;; -- Usage index
-
-        index (reduce
-                (fn [index usage]
-                  (let [{var-namespace :to
-                         var-name :name
-                         var-name-row :name-row} usage
-
-                        sym (symbol (str var-namespace) (str var-name))
-
-                        index (update-in index [:nightincode/var-usage-index sym] (fnil conj #{}) usage)
-
-                        index (update-in index [:nightincode/var-usage-row-index var-name-row] (fnil conj []) usage)]
-
-                    index))
-                index
-                (:var-usages analysis))
-
-
-        ;; -- Definition index
-
-        index (reduce
-                (fn [index definition]
-                  (let [{var-namespace :ns
-                         var-name :name
-                         var-name-row :name-row} definition
-
-                        sym (symbol (str var-namespace) (str var-name))
-
-                        index (update-in index [:nightincode/var-definition-index sym] (fnil conj #{}) definition)
-
-                        index (update-in index [:nightincode/var-definition-row-index var-name-row] (fnil conj []) definition)]
-
-                    index))
-                index
-                (:var-definitions analysis))]
-
-    index))
 
 (defn clojuredocs
   "ClojureDocs.org database."
@@ -164,6 +84,275 @@
 (def clojuredocs-completion-delay
   (delay (clojuredocs-completion)))
 
+
+;; ---------------------------------------------------------
+
+
+(defn analyze
+  "Analyze Clojure/Script forms with clj-kondo.
+
+  `uri` is used to report the filename."
+  [{:keys [uri text config]}]
+  (with-in-str text
+    (clj-kondo/run!
+      {:lint ["-"]
+       :filename (.getPath (URI. uri))
+       :config (or config default-clj-kondo-config)})))
+
+(defn index-V
+  "Index Var definitions and usages by symbol and row."
+  [analysis]
+  (let [index {;; Definitions indexed by name.
+               :nightincode/IVD {}
+
+               ;; Definitions indexed by row.
+               :nightincode/IVD_ {}
+
+               ;; Usages indexed by name.
+               :nightincode/IVU {}
+
+               ;; Usages indexed by row.
+               :nightincode/IVU_ {}}
+
+        ;; -- Usage index
+
+        index (reduce
+                (fn [index usage]
+                  (let [{var-namespace :to
+                         var-name :name
+                         var-name-row :name-row} usage
+
+                        sym (symbol (str var-namespace) (str var-name))
+
+                        index (update-in index [:nightincode/IVU sym] (fnil conj #{}) usage)
+
+                        index (update-in index [:nightincode/IVU_ var-name-row] (fnil conj []) usage)]
+
+                    index))
+                index
+                (:var-usages analysis))
+
+
+        ;; -- Definition index
+
+        index (reduce
+                (fn [index definition]
+                  (let [{var-namespace :ns
+                         var-name :name
+                         var-name-row :name-row} definition
+
+                        sym (symbol (str var-namespace) (str var-name))
+
+                        index (update-in index [:nightincode/IVD sym] (fnil conj #{}) definition)
+
+                        index (update-in index [:nightincode/IVD_ var-name-row] (fnil conj []) definition)]
+
+                    index))
+                index
+                (:var-definitions analysis))]
+
+    index))
+
+(defn index-K
+  "Index keyword definitions (reg) and usages by keyword and row."
+  [analysis]
+  (let [index {;; Definitions indexed by keyword.
+               :nightincode/IKD {}
+
+               ;; Definitions indexed by row.
+               :nightincode/IKD_ {}
+
+               ;; Usages indexed by keyword.
+               :nightincode/IKU {}
+
+               ;; Usages indexed by row.
+               :nightincode/IKU_ {}}
+
+        index (reduce
+                (fn [index keyword-analysis]
+                  (let [{keyword-namespace :ns
+                         keyword-name :name
+                         keyword-row :row
+                         keyword-reg :reg} keyword-analysis
+
+                        k (if keyword-namespace
+                            (keyword (str keyword-namespace) keyword-name)
+                            (keyword keyword-name))]
+
+                    (cond
+                      keyword-reg
+                      (-> index
+                        (update-in [:nightincode/IKD k] (fnil conj #{}) keyword-analysis)
+                        (update-in [:nightincode/IKD_ keyword-row] (fnil conj []) keyword-analysis))
+
+                      :else
+                      (-> index
+                        (update-in [:nightincode/IKU k] (fnil conj #{}) keyword-analysis)
+                        (update-in [:nightincode/IKU_ keyword-row] (fnil conj []) keyword-analysis)))))
+                index
+                (:keywords analysis))]
+
+    index))
+
+
+;; -- Indexes
+
+(defn IVD
+  "Var definitions indexed by symbol."
+  [index]
+  (:nightincode/IVD index))
+
+(defn IVD_
+  "Var definitions indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IVD_ index))
+
+(defn IVU
+  "Var usages indexed by symbol."
+  [index]
+  (:nightincode/IVU index))
+
+(defn IVU_
+  "Var usages indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IVU_ index))
+
+(defn IKD
+  "Keyword definitions indexed by keyword."
+  [index]
+  (:nightincode/IKD index))
+
+(defn IKD_
+  "Keyword definitions indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IKD_ index))
+
+(defn IKU
+  "Keyword usages indexed by keyword."
+  [index]
+  (:nightincode/IKU index))
+
+(defn IKU_
+  "Keyword usages indexed by row.
+
+  Note: row is not zero-based."
+  [index]
+  (:nightincode/IKU_ index))
+
+
+;; -- Queries
+
+(defn ?VD_
+  "Returns Var definition at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {:keys [name-col name-end-col] :as var-definition}]
+      (when (<= name-col col name-end-col)
+        (reduced var-definition)))
+    nil
+    ((IVD_ index) row)))
+
+(defn ?VU_
+  "Returns Var usage at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {:keys [name-col name-end-col] :as var-usage}]
+      (when (<= name-col col name-end-col)
+        (reduced var-usage)))
+    nil
+    ((IVU_ index) row)))
+
+(defn ?KD_
+  "Returns keyword definition at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {k-col :col
+            k-end-col :end-col :as keyword-definition}]
+      (when (<= k-col col k-end-col)
+        (reduced keyword-definition)))
+    nil
+    ((IKD_ index) row)))
+
+(defn ?KU_
+  "Returns keyword usage at location, or nil."
+  [index [row col]]
+  (reduce
+    (fn [_ {k-col :col
+            k-end-col :end-col :as keyword-usage}]
+      (when (<= k-col col k-end-col)
+        (reduced keyword-usage)))
+    nil
+    ((IKU_ index) row)))
+
+(defn ?T_
+  "Returns T at location, or nil.
+
+  Where T is one of:
+   - Namespace definition
+   - Namespace usages
+   - Var definition
+   - Var usage
+   - Local definition
+   - Local usage
+   - Keyword"
+  [index row+col]
+  (reduce
+    (fn [_ k]
+      (case k
+        :nightincode/VD
+        (when-let [var-definition (?VD_ index row+col)]
+          (reduced (with-meta var-definition {:nightincode/TT :nightincode/VD
+                                              :nightincode/row+col row+col})))
+
+        :nightincode/VU
+        (when-let [var-usage (?VU_ index row+col)]
+          (reduced (with-meta var-usage {:nightincode/TT :nightincode/VU
+                                         :nightincode/row+col row+col})))
+
+        nil))
+    nil
+    [:nightincode/VU
+     :nightincode/VD
+     :nightincode/LD
+     :nightincode/LU]))
+
+
+;; ---------------------------------------------------------
+
+;; -- Functions to read and write from and to state
+
+(def state-ref (atom nil))
+
+(defn _writer ^Writer [state]
+  (:nightincode/writer state))
+
+(defn _repl-port [state]
+  (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
+    (.getLocalPort server-socket)))
+
+(defn _text-document-index [state textDocument]
+  (get-in state [:nightincode/index (text-document-uri textDocument)]))
+
+(defn !index-document [state {:keys [uri analysis]}]
+  (let [index-V (index-V analysis)
+        index-K (index-K analysis)
+
+        index (merge index-V index-K)
+
+        state (update-in state [:nightincode/index uri] merge index)]
+
+    state))
+
+
+;; ---------------------------------------------------------
+
+
 (defmethod lsp/handle "initialize" [request]
 
   ;; The initialize request is sent as the first request from the client to the server.
@@ -184,7 +373,7 @@
       ;;
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
-      :completionProvider {:triggerCharacters ["("]}}
+      :completionProvider {:triggerCharacters ["(" ":"]}}
 
      :serverInfo
      {:name "Nightincode"}}))
@@ -245,11 +434,11 @@
     (swap! state-ref merge {:LSP/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
-    (lsp/write (writer @state-ref)
+    (lsp/write (_writer @state-ref)
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params {:type 4
-                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (repl-port @state-ref))}})))
+                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
 
 (defmethod lsp/handle "shutdown" [request]
 
@@ -285,28 +474,33 @@
   (let [textDocument (get-in notification [:params :textDocument])
 
         text-document-uri (text-document-uri textDocument)
+        text-document-text (text-document-text textDocument)
 
-        result (analyze-document textDocument)
-        result (select-keys result [:findings :analysis :summary])
+        result (analyze {:uri text-document-uri
+                         :text text-document-text})]
 
-        {:keys [analysis]} result
+    (swap! state-ref !index-document {:uri text-document-uri
+                                      :analysis (:analysis result)})))
 
-        var-indexes (var-indexes analysis)]
-
-    (swap! state-ref
-      (fn [state]
-        (let [state (assoc-in state [:clj-kondo/result text-document-uri] result)
-              state (update-in state [:nightincode/index text-document-uri] merge var-indexes)]
-          state)))))
-
-(defmethod lsp/handle "textDocument/didChange" [_notification]
+(defmethod lsp/handle "textDocument/didChange" [notification]
 
   ;; The document change notification is sent from the client to the server to signal changes to a text document.
   ;; Before a client can change a text document it must claim ownership of its content using the textDocument/didOpen notification.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
 
-  )
+  (let [textDocument (get-in notification [:params :textDocument])
+
+        text-document-uri (text-document-uri textDocument)
+
+        ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
+        text-document-text (get-in notification [:params :contentChanges 0 :text])
+
+        result (analyze {:uri text-document-uri
+                         :text text-document-text})]
+
+    (swap! state-ref !index-document {:uri text-document-uri
+                                      :analysis (:analysis result)})))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 
@@ -314,7 +508,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didSave
 
-  )
+  nil)
 
 (defmethod lsp/handle "textDocument/didClose" [notification]
 
@@ -341,24 +535,73 @@
 
   (let [textDocument (get-in request [:params :textDocument])
 
-        {:keys [nightincode/var-definition-index]} (text-document-index @state-ref textDocument)
+        cursor-line (get-in request [:params :position :line])
 
-        ;; Completions from ClojureDocs (clojure.core only).
-        completions @clojuredocs-completion-delay
+        index (_text-document-index @state-ref textDocument)
+
+        row+col [(inc (get-in request [:params :position :line]))
+                 (inc (get-in request [:params :position :character]))]
+
+        T (?T_ index row+col)
+
+        ;; TODO: Extract completions.
 
         ;; Completions with document definitions.
-        completions (into completions
-                      (map
-                        (fn [[sym _]]
-                          ;; Var name only because it's a document definition.
-                          {:label (name sym)
-                           :kind 6}))
-                      var-definition-index)]
-    (lsp/response request completions)))
+        VD-completions (into []
+                         (map
+                           (fn [[sym _]]
+                             ;; Var name only because it's a document definition.
+                             {:label (name sym)
+                              :kind 6}))
+                         (IVD index))
 
+        ;; Completions with document usages - exclude "self definitions".
+        VU-completions (into #{}
+                         (comp
+                           (mapcat val)
+                           (remove
+                             (fn [{:keys [from to]}]
+                               (= from to)))
+                           (map
+                             (fn [{:keys [to alias name]}]
+                               {:label (cond
+                                         (contains? #{'clojure.core 'cljs.core} to)
+                                         (str name)
 
-;; ---------------------------------------------------------
+                                         (or alias to)
+                                         (format "%s/%s" (or alias to) name)
 
+                                         :else
+                                         (str name))
+                                :kind 6})))
+                         (IVU index))
+
+        K-completions (into []
+                        (map
+                          (fn [[k _]]
+                            {:label (str k)
+                             :kind 14}))
+                        ;; Only the keyword is necessary,
+                        ;; so it's okay to combine indexes.
+                        (merge (IKD index) (IKU index)))
+
+        completions (reduce
+                      into
+                      []
+                      [VD-completions
+                       VU-completions
+                       K-completions])]
+
+    (lsp/response request (merge {:items completions}
+                            (when T
+                              {:itemDefaults
+                               {:editRange
+                                {:start
+                                 {:line cursor-line
+                                  :character (dec (:name-col T))}
+                                 :end
+                                 {:line cursor-line
+                                  :character (dec (:name-end-col T))}}}})))))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
@@ -403,10 +646,57 @@
 
   (keys index)
 
-  (lsp/write (writer @state-ref)
+  (lsp/handle
+    {:method "textDocument/completion"
+     :params
+     {:textDocument
+      {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}
+
+      :position
+      {:line 119
+       :character 40}}})
+
+  (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
+
+  (clj-kondo/run!
+    {:lint [lispi-core-uri]
+     :config default-clj-kondo-config})
+
+  '{:row 42,
+    :col 29,
+    :end-row 42,
+    :end-col 32,
+    :name "as",
+    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
+    :from user}
+
+  '{:end-row 49,
+    :ns lispi,
+    :name "tokens",
+    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
+    :from lispi.core,
+    :col 8,
+    :reg clojure.spec.alpha/def,
+    :end-col 21,
+    :row 49}
+
+  (IVD_ (_text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VD_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
+
+  (IVU_ (_text-document-index @state-ref {:uri lispi-core-uri}))
+  (?VU_ (_text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
+
+  (IVU (_text-document-index @state-ref {:uri lispi-core-uri}))
+
+  (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
+
+  (keys index)
+
+  (lsp/write (_writer @state-ref)
     {:jsonrpc "2.0"
      :method "window/showMessage"
      :params {:type 3
               :message "Hello!"}})
+
 
   )

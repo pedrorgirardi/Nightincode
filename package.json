@@ -82,7 +82,7 @@
     "vscode:prepublish": "npm run clean && npm run release"
   },
   "devDependencies": {
-    "shadow-cljs": "^2.19.1"
+    "shadow-cljs": "^2.19.3"
   },
   "dependencies": {
     "vscode-languageclient": "^8.0.1"
