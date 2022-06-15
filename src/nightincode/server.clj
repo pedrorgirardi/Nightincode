@@ -547,50 +547,50 @@
         ;; TODO: Extract completions.
 
         ;; Completions with document definitions.
-        completions-definitions (into []
-                                  (map
-                                    (fn [[sym _]]
-                                      ;; Var name only because it's a document definition.
-                                      {:label (name sym)
-                                       :kind 6}))
-                                  (IVD index))
+        VD-completions (into []
+                         (map
+                           (fn [[sym _]]
+                             ;; Var name only because it's a document definition.
+                             {:label (name sym)
+                              :kind 6}))
+                         (IVD index))
 
         ;; Completions with document usages - exclude "self definitions".
-        completions-usages (into #{}
-                             (comp
-                               (mapcat val)
-                               (remove
-                                 (fn [{:keys [from to]}]
-                                   (= from to)))
-                               (map
-                                 (fn [{:keys [to alias name]}]
-                                   {:label (cond
-                                             (contains? #{'clojure.core 'cljs.core} to)
-                                             (str name)
+        VU-completions (into #{}
+                         (comp
+                           (mapcat val)
+                           (remove
+                             (fn [{:keys [from to]}]
+                               (= from to)))
+                           (map
+                             (fn [{:keys [to alias name]}]
+                               {:label (cond
+                                         (contains? #{'clojure.core 'cljs.core} to)
+                                         (str name)
 
-                                             (or alias to)
-                                             (format "%s/%s" (or alias to) name)
+                                         (or alias to)
+                                         (format "%s/%s" (or alias to) name)
 
-                                             :else
-                                             (str name))
-                                    :kind 6})))
-                             (IVU index))
+                                         :else
+                                         (str name))
+                                :kind 6})))
+                         (IVU index))
 
-        completions-keyword-usages (into []
-                                     (map
-                                       (fn [[k _]]
-                                         {:label (str k)
-                                          :kind 14}))
-                                     ;; Only the keyword is necessary,
-                                     ;; so it's okay to combine indexes.
-                                     (merge (IKD index) (IKU index)))
+        K-completions (into []
+                        (map
+                          (fn [[k _]]
+                            {:label (str k)
+                             :kind 14}))
+                        ;; Only the keyword is necessary,
+                        ;; so it's okay to combine indexes.
+                        (merge (IKD index) (IKU index)))
 
         completions (reduce
                       into
                       []
-                      [completions-definitions
-                       completions-usages
-                       completions-keyword-usages])]
+                      [VD-completions
+                       VU-completions
+                       K-completions])]
 
     (lsp/response request (merge {:items completions}
                             (when T
