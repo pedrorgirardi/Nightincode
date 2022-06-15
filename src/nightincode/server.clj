@@ -756,7 +756,7 @@
 
                 ;; Note: `content` is a string when there's a decoding error.
                 :decode-error
-                (log/error error header content)
+                (log/error error status header content)
 
                 :handled
                 (log/debug status (select-keys content [:id :method]))
