@@ -386,6 +386,7 @@
       ;;
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
+      :definitionProvider true
       :completionProvider {:triggerCharacters ["(" ":"]}}
 
      :serverInfo
@@ -539,6 +540,28 @@
               state (update state :clj-kondo/result dissoc text-document-uri)]
 
           state)))))
+
+(defmethod lsp/handle "textDocument/definition" [request]
+
+  ;; The go to definition request is sent from the client to the server
+  ;; to resolve the definition location of a symbol at a given text document position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
+
+  (let [textDocument (get-in request [:params :textDocument])
+
+        cursor-line (get-in request [:params :position :line])
+
+        index (_text-document-index @state-ref textDocument)
+
+        row+col [(inc (get-in request [:params :position :line]))
+                 (inc (get-in request [:params :position :character]))]
+
+        T (?T_ index row+col)
+
+        ]
+
+    (lsp/response request nil)))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
