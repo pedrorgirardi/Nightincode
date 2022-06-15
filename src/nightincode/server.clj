@@ -340,6 +340,9 @@
 (defn TT [T]
   (:nightincode/TT (meta T)))
 
+(defn VD-symbol [{:keys [ns name]}]
+  (symbol (str ns) (str name)))
+
 (defn VU-symbol [{:keys [to name]}]
   (symbol (str to) (str name)))
 
@@ -395,6 +398,7 @@
       ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
       :textDocumentSync 1
       :definitionProvider true
+      :referencesProvider true
       :completionProvider {:triggerCharacters ["(" ":"]}}
 
      :serverInfo
@@ -594,6 +598,55 @@
       (lsp/error-response request
         {:code -32803
          :message (format "Sorry. Nightincode failed to find a definition. (%s)"(ex-message ex))}))))
+
+(defmethod lsp/handle "textDocument/references" [request]
+
+  ;; The references request is sent from the client to the server
+  ;; to resolve project-wide references for the symbol denoted by the given text document position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_references
+
+  (try
+    (let [textDocument (get-in request [:params :textDocument])
+
+          cursor-line (get-in request [:params :position :line])
+          cursor-character (get-in request [:params :position :character])
+
+          index (_text-document-index @state-ref textDocument)
+
+          row+col [(inc cursor-line) (inc cursor-character)]
+
+          T (?T_ index row+col)
+
+          V-location (fn [{:keys [filename
+                                  name-row
+                                  name-end-row
+                                  name-col
+                                  name-end-col]}]
+                       {:uri (.toString (filepath-uri filename))
+                        :range
+                        {:start
+                         {:line (dec name-row)
+                          :character (dec name-col)}
+                         :end
+                         {:line (dec name-end-row)
+                          :character (dec name-end-col)}}})
+
+          R (case (TT T)
+              :nightincode/VD
+              (map V-location ((IVU index) (VD-symbol T)))
+
+              :nightincode/VU
+              (map V-location ((IVU index) (VU-symbol T)))
+
+              nil)]
+
+      (lsp/response request (seq R)))
+
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message (format "Sorry. Nightincode failed to find references. (%s)"(ex-message ex))}))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
