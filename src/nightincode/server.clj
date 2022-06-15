@@ -749,10 +749,10 @@
      :trace (fn [{:keys [header status content error]}]
               (case status
                 :read-header
-                (log/debug (:Content-Length header) (select-keys content [:id :method]))
+                (log/debug status (:Content-Length header) (select-keys content [:id :method]))
 
                 :content-decoded
-                (log/debug (select-keys content [:id :method]))
+                (log/debug status (select-keys content [:id :method]))
 
                 ;; Note: `content` is a string when there's a decoding error.
                 :content-decode-failed
@@ -762,7 +762,7 @@
                    :content-length (alength (.getBytes ^String content))})
 
                 :message-handled
-                (log/debug (select-keys content [:id :method]))
+                (log/debug status (select-keys content [:id :method]))
 
                 nil))}))
 
