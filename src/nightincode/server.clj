@@ -300,7 +300,8 @@
    - Var usage
    - Local definition
    - Local usage
-   - Keyword"
+   - Keyword definition
+   - Keyword usage"
   [index row+col]
   (reduce
     (fn [_ k]
@@ -315,12 +316,24 @@
           (reduced (with-meta var-usage {:nightincode/TT :nightincode/VU
                                          :nightincode/row+col row+col})))
 
+        :nightincode/KU
+        (when-let [keyword-usage (?KU_ index row+col)]
+          (reduced (with-meta keyword-usage {:nightincode/TT :nightincode/KU
+                                             :nightincode/row+col row+col})))
+
+        :nightincode/KD
+        (when-let [keyword-definition (?KD_ index row+col)]
+          (reduced (with-meta keyword-definition {:nightincode/TT :nightincode/KD
+                                                  :nightincode/row+col row+col})))
+
         nil))
     nil
     [:nightincode/VU
      :nightincode/VD
      :nightincode/LD
-     :nightincode/LU]))
+     :nightincode/LU
+     :nightincode/KU
+     :nightincode/KD]))
 
 
 ;; ---------------------------------------------------------
@@ -598,10 +611,10 @@
                                {:editRange
                                 {:start
                                  {:line cursor-line
-                                  :character (dec (:name-col T))}
+                                  :character (dec (or (:name-col T) (:col T)))}
                                  :end
                                  {:line cursor-line
-                                  :character (dec (:name-end-col T))}}}})))))
+                                  :character (dec (or (:name-end-col T) (:end-col T)))}}}})))))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
