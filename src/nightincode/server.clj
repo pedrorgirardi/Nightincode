@@ -748,15 +748,21 @@
      :writer (lsp/buffered-writer System/out)
      :trace (fn [{:keys [header status content error]}]
               (case status
-                :message-decoded
+                :read-header
+                (log/debug (:Content-Length header) (select-keys content [:id :method]))
+
+                :content-decoded
                 (log/debug (select-keys content [:id :method]))
 
                 ;; Note: `content` is a string when there's a decoding error.
-                :message-decode-error
+                :content-decode-failed
                 (log/error error
                   {:header header
                    :content content
                    :content-length (alength (.getBytes ^String content))})
+
+                :message-handled
+                (log/debug (select-keys content [:id :method]))
 
                 nil))}))
 
