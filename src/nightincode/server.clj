@@ -2,6 +2,7 @@
   (:require
    [clojure.core.server :refer [start-server]]
    [clojure.java.io :as io]
+   [clojure.pprint :as pprint]
    [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
@@ -746,11 +747,8 @@
      :out (lsp/buffered-writer System/out)
      :trace (fn [{:keys [header status content error] :as trace}]
               (case status
-                :header
-                (log/debug status header)
-
                 :reading
-                (log/debug trace)
+                (log/debug (str "\n" (with-out-str (pprint/pprint trace))))
 
                 :decoded
                 (log/debug status (select-keys content [:id :method]))
