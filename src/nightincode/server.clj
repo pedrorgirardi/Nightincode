@@ -375,8 +375,8 @@
 
 (def state-ref (atom nil))
 
-(defn _writer ^Writer [state]
-  (:nightincode/writer state))
+(defn _out ^Writer [state]
+  (:nightincode/out state))
 
 (defn _repl-port [state]
   (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
@@ -482,7 +482,7 @@
     (swap! state-ref merge {:LSP/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
-    (lsp/write (_writer @state-ref)
+    (lsp/write (_out @state-ref)
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params {:type 4
@@ -732,11 +732,9 @@
                                        :port 0
                                        :accept 'clojure.core.server/repl})]
 
-    (log/debug "REPL port:" (.getLocalPort server-socket))
-
     (reset! state-ref #:nightincode {:repl-server-socket server-socket
-                                     :reader (:reader config)
-                                     :writer (:writer config)})
+                                     :in (:in config)
+                                     :out (:out config)})
 
     (doto
       (Thread. #(lsp/start config))
@@ -744,12 +742,15 @@
 
 (defn -main [& _]
   (start
-    {:reader (lsp/buffered-reader System/in)
-     :writer (lsp/buffered-writer System/out)
-     :trace (fn [{:keys [header status content error]}]
+    {:in System/in
+     :out (lsp/buffered-writer System/out)
+     :trace (fn [{:keys [header status content error] :as trace}]
               (case status
                 :header
                 (log/debug status header)
+
+                :reading
+                (log/debug trace)
 
                 :decoded
                 (log/debug status (select-keys content [:id :method]))
@@ -828,7 +829,7 @@
 
   (keys index)
 
-  (lsp/write (_writer @state-ref)
+  (lsp/write (_out @state-ref)
     {:jsonrpc "2.0"
      :method "window/showMessage"
      :params {:type 3
