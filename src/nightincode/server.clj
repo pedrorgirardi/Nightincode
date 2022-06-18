@@ -424,7 +424,8 @@
       :completionProvider {:triggerCharacters ["(" ":"]}}
 
      :serverInfo
-     {:name "Nightincode"}}))
+     {:name "Nightincode"
+      :version "0.2.0"}}))
 
 (defmethod lsp/handle "initialized" [notification]
 
