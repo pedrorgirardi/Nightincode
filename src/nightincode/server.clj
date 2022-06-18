@@ -1,6 +1,7 @@
 (ns nightincode.server
   (:require
    [clojure.core.server :refer [start-server]]
+   [clojure.edn :as edn]
    [clojure.java.io :as io]
    [clojure.data.json :as json]
    [clojure.string :as str]
@@ -91,6 +92,13 @@
 
 
 (defn analyze
+  "Analyze Clojure/Script forms with clj-kondo."
+  [{:keys [config lint]}]
+  (clj-kondo/run!
+    {:lint lint
+     :config (or config default-clj-kondo-config)}))
+
+(defn analyze-text
   "Analyze Clojure/Script forms with clj-kondo.
 
   `uri` is used to report the filename."
@@ -100,6 +108,14 @@
       {:lint ["-"]
        :filename (.getPath (URI. uri))
        :config (or config default-clj-kondo-config)})))
+
+(defn analyzer-paths [root-path]
+  (let [config-file (io/file root-path "nightincode.edn")]
+    (when (.exists config-file)
+      (let [config (slurp config-file)
+            config (edn/read-string config)
+            paths (get-in config [:analyzer :paths])]
+        (map #(.getPath (io/file root-path %)) paths)))))
 
 (defn index-V
   "Index Var definitions and usages by symbol and row."
@@ -382,8 +398,24 @@
   (when-let [^ServerSocket server-socket (:nightincode/repl-server-socket state)]
     (.getLocalPort server-socket)))
 
+(defn _root-path [state]
+  (get-in state [:LSP/InitializeParams :rootPath]))
+
+(defn _project-index [state]
+  (get-in state [:nightincode/index :project]))
+
 (defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
+
+(defn !index-project [state {:keys [analysis]}]
+  (let [index-V (index-V analysis)
+        index-K (index-K analysis)
+
+        index (merge index-V index-K)
+
+        state (update-in state [:nightincode/index :project] merge index)]
+
+    state))
 
 (defn !index-document [state {:keys [uri analysis]}]
   (let [index-V (index-V analysis)
@@ -487,7 +519,12 @@
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params {:type 4
-                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
+                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})
+
+
+    (when-let [lint (analyzer-paths (_root-path @state-ref))]
+      (let [result (analyze {:lint lint})]
+        (swap! state-ref !index-project result)))))
 
 (defmethod lsp/handle "shutdown" [request]
 
@@ -525,8 +562,8 @@
         text-document-uri (text-document-uri textDocument)
         text-document-text (text-document-text textDocument)
 
-        result (analyze {:uri text-document-uri
-                         :text text-document-text})]
+        result (analyze-text {:uri text-document-uri
+                              :text text-document-text})]
 
     (swap! state-ref !index-document {:uri text-document-uri
                                       :analysis (:analysis result)})))
@@ -545,8 +582,8 @@
         ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
         text-document-text (get-in notification [:params :contentChanges 0 :text])
 
-        result (analyze {:uri text-document-uri
-                         :text text-document-text})]
+        result (analyze-text {:uri text-document-uri
+                              :text text-document-text})]
 
     (swap! state-ref !index-document {:uri text-document-uri
                                       :analysis (:analysis result)})))
@@ -589,18 +626,28 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          index (_text-document-index @state-ref textDocument)
+          document-index (_text-document-index @state-ref textDocument)
+
+          project-index (_project-index @state-ref)
 
           row+col [(inc cursor-line) (inc cursor-character)]
 
-          T (?T_ index row+col)
+          T (?T_ document-index row+col)
 
           D (case (TT T)
               :nightincode/VD
-              (map V-location ((IVD index) (VD-ident T)))
+              (let [k (VD-ident T)
+
+                    VD (or ((IVD document-index) k) ((IVD project-index) k))]
+
+                (map V-location VD))
 
               :nightincode/VU
-              (map V-location ((IVD index) (VU-ident T)))
+              (let [k (VU-ident T)
+
+                    VD (or ((IVD document-index) k) ((IVD project-index) k))]
+
+                (map V-location VD))
 
               nil)]
 
@@ -777,6 +824,8 @@
     (def clj-kondo-result result))
 
   (keys index)
+
+  (:project index)
 
   (lsp/handle
     {:method "textDocument/completion"
