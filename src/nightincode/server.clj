@@ -425,7 +425,7 @@
 
      :serverInfo
      {:name "Nightincode"
-      :version "0.2.0"}}))
+      :version "0.3.0-dev"}}))
 
 (defmethod lsp/handle "initialized" [notification]
 
