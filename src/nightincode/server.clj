@@ -671,18 +671,26 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          index (_text-document-index @state-ref textDocument)
+          document-index (_text-document-index @state-ref textDocument)
+
+          project-index (_project-index @state-ref)
 
           row+col [(inc cursor-line) (inc cursor-character)]
 
-          T (?T_ index row+col)
+          T (?T_ document-index row+col)
 
           R (case (TT T)
               :nightincode/VD
-              (map V-location ((IVU index) (VD-ident T)))
+              (let [k (VD-ident T)
+
+                    VU (or ((IVU document-index) k) ((IVU project-index) k))]
+                (map V-location VU))
 
               :nightincode/VU
-              (map V-location ((IVU index) (VU-ident T)))
+              (let [k (VU-ident T)
+
+                    VU (or ((IVU document-index) k) ((IVU project-index) k))]
+                (map V-location VU))
 
               nil)]
 
