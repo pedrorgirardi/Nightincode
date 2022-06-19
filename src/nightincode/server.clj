@@ -888,5 +888,17 @@
      :params {:type 3
               :message "Hello!"}})
 
+  (require '[clojure.tools.cli.api :as deps-cli])
+  (require '[clojure.tools.deps.alpha :as deps])
+
+  (def deps-file
+    (deps/slurp-deps (io/file "/Users/pedro/Developer/Nightincode/deps.edn")))
+
+  (deps/calc-basis deps-file)
+
+  (deps-cli/list
+    {:project deps-file
+     :license :none})
+
 
   )
