@@ -6,7 +6,7 @@
         }
     ],
     "pep": {
-        "paths": ["src"],
+        "paths": ["src", "test"],
         "classpath": "clojure -Spath"
     }
 }
