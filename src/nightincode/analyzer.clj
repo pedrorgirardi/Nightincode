@@ -1,5 +1,7 @@
 (ns nightincode.analyzer
   (:require
+   [clojure.java.io :as io]
+
    [clj-kondo.core :as clj-kondo]))
 
 (def default-clj-kondo-config
@@ -21,40 +23,33 @@
       (merge-with merge-index index (into {}
                                       (map
                                         (fn [[filename codeqs]]
-                                          {filename {semantic codeqs}}))
+                                          {filename
+                                           {:analysis
+                                            {semantic codeqs}}}))
                                       (group-by :filename codeqs))))
     {}
     analysis))
 
 (comment
 
+  (def example1-path
+    (.getPath (io/resource "example1.clj")))
+
   (def result
     (clj-kondo/run!
-      {:lint ["/Users/pedro/Developer/Nightincode/test/example1.clj"]
+      {:lint [example1-path]
        :config default-clj-kondo-config}))
 
   (keys result)
 
   (keys (:analysis result))
 
+  (def indexed
+    (index (:analysis result)))
 
-  (def index
-    (reduce
-      (fn [index [semantic codeqs]]
-        (merge-with merge-index index (into {}
-                                        (map
-                                          (fn [[filename codeqs]]
-                                            {filename {semantic codeqs}}))
-                                        (group-by :filename codeqs))))
-      {}
-      (:analysis result)))
+  (keys indexed)
 
-  (keys index)
+  (indexed example1-path)
 
-  (index "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj")
-
-  (clj-kondo/run!
-    {:lint ["/Users/pedro/Developer/Nightincode/src/nightincode/server.clj"]
-     :config default-clj-kondo-config})
 
   )

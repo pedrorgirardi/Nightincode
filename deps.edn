@@ -11,7 +11,10 @@
   io.github.pedrorgirardi/lspie {:local/root "../lspie"}}
 
  :aliases
- {:start
+ {:test
+  {:extra-paths ["test"]}
+
+  :start
   {:exec-fn nightincode.server/start}
 
   :jar
