@@ -19,14 +19,14 @@
 
 (defn index [analysis]
   (reduce
-    (fn [index [semantic codeqs]]
+    (fn [index [semantic items]]
       (merge-with merge-index index (into {}
                                       (map
-                                        (fn [[filename codeqs]]
+                                        (fn [[filename items]]
                                           {filename
                                            {:analysis
-                                            {semantic codeqs}}}))
-                                      (group-by :filename codeqs))))
+                                            {semantic items}}}))
+                                      (group-by :filename items))))
     {}
     analysis))
 
