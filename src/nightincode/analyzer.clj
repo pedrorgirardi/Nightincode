@@ -2,7 +2,13 @@
   (:require
    [clojure.java.io :as io]
 
+   [datascript.core :as d]
    [clj-kondo.core :as clj-kondo]))
+
+(def schema
+  {:var/namespace+name+lang
+   {:db/tupleAttrs [:var/namespace :var/name :var/lang]
+    :db/unique :db.unique/identity}})
 
 (def default-clj-kondo-config
   {:analysis
@@ -33,7 +39,7 @@
 (comment
 
   (def example1-path
-    (.getPath (io/resource "example1.clj")))
+    (.getPath (io/resource "example1.cljc")))
 
   (def result
     (clj-kondo/run!
@@ -50,6 +56,47 @@
   (keys indexed)
 
   (indexed example1-path)
+
+
+  ;; Example of a Var definition:
+  '{:end-row 5,
+    :name-end-col 4,
+    :name-end-row 4,
+    :name-row 4,
+    :ns example1,
+    :name a,
+    :defined-by clojure.core/def,
+    :lang :clj,
+    :filename "/Users/pedro/Developer/Nightincode/test/example1.cljc",
+    :col 1,
+    :name-col 3,
+    :end-col 5,
+    :row 3}
+
+
+  (def conn (d/create-conn schema))
+
+
+  (d/transact! conn
+    [{:var/namespace 'person
+      :var/name 'name}])
+
+  (d/transact! conn
+    [{:var/namespace+name ['person 'name]
+      :var/row 0
+      :var/row-end 1
+      :var/col 0
+      :var/col-end 1}])
+
+  (d/touch (d/entity (d/db conn) [:var/namespace+name ['person 'name]]))
+
+
+  (d/q '[:find  (pull ?v [*])
+         :where
+         [?v :var/row 0]
+         [?v :var/col 0]]
+    (d/db conn))
+
 
 
   )
