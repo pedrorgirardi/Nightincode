@@ -42,19 +42,21 @@
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  #:var {:namespace (:ns definition)
-         :name (:name definition)
-         :lang (:lang definition :clj)
-         :row (:row definition)
-         :row-end (:end-row definition)
-         :col (:col definition)
-         :col-end (:end-col definition)
-         :name-row (:name-row definition)
-         :name-row-end (:name-end-row definition)
-         :name-col (:name-col definition)
-         :name-col-end (:name-end-col definition)
-         :defined-by (:defined-by definition)
-         :filename (:filename definition)})
+  (merge #:var {:namespace (:ns definition)
+                :name (:name definition)
+                :lang (:lang definition :clj)
+                :row (:row definition)
+                :row-end (:end-row definition)
+                :col (:col definition)
+                :col-end (:end-col definition)
+                :name-row (:name-row definition)
+                :name-row-end (:name-end-row definition)
+                :name-col (:name-col definition)
+                :name-col-end (:name-end-col definition)
+                :defined-by (:defined-by definition)
+                :filename (:filename definition)}
+    (when-let [doc (:doc definition)]
+      {:var/doc doc})))
 
 (defn merge-index [a b]
     (merge-with into a b))
