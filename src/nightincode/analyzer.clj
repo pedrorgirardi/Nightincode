@@ -20,6 +20,42 @@
    :output
    {:canonical-paths true}})
 
+'{:end-row 5,
+  :name-end-col 4,
+  :name-end-row 4,
+  :name-row 4,
+  :ns example1,
+  :name a,
+  :defined-by clojure.core/def,
+  :lang :clj,
+  :filename "/Users/pedro/Developer/Nightincode/test/example1.cljc",
+  :col 1,
+  :name-col 3,
+  :end-col 5,
+  :row 3}
+
+(defn persisted-var
+  "Var data defined to be persisted in the database."
+  [definition]
+
+  ;; Note:
+  ;; Name row & col encode the location of the symbol.
+  ;; Row & col, without name, encode the form location.
+
+  #:var {:namespace (:ns definition)
+         :name (:name definition)
+         :lang (:lang definition :clj)
+         :row (:row definition)
+         :row-end (:end-row definition)
+         :col (:col definition)
+         :col-end (:end-col definition)
+         :name-row (:name-row definition)
+         :name-row-end (:name-end-row definition)
+         :name-col (:name-col definition)
+         :name-col-end (:name-end-col definition)
+         :defined-by (:defined-by definition)
+         :filename (:filename definition)})
+
 (defn merge-index [a b]
     (merge-with into a b))
 
