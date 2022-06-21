@@ -20,20 +20,6 @@
    :output
    {:canonical-paths true}})
 
-'{:end-row 5,
-  :name-end-col 4,
-  :name-end-row 4,
-  :name-row 4,
-  :ns example1,
-  :name a,
-  :defined-by clojure.core/def,
-  :lang :clj,
-  :filename "/Users/pedro/Developer/Nightincode/test/example1.cljc",
-  :col 1,
-  :name-col 3,
-  :end-col 5,
-  :row 3}
-
 (defn persisted-var
   "Var data defined to be persisted in the database."
   [definition]
