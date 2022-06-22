@@ -6,9 +6,13 @@
    [clj-kondo.core :as clj-kondo]))
 
 (def schema
-  {:var/namespace+name+lang
-   {:db/tupleAttrs [:var/namespace :var/name :var/lang]
-    :db/unique :db.unique/identity}})
+  {:document/filename
+   {:db/unique :db.unique/identity}
+
+   :document/parts
+   {:db/valueType   :db.type/ref
+    :db/cardinality :db.cardinality/many
+    :db/isComponent true}})
 
 (def default-clj-kondo-config
   {:analysis
@@ -102,23 +106,34 @@
 
 
   (d/transact! conn
-    [{:var/namespace 'person
-      :var/name 'name}])
+    [{:document/filename "A"
+      :document/parts
+      [{:var/namespace 'person
+        :var/name 'name}
+
+       {:var/namespace 'person
+        :var/name 'lastname}]}])
+
+  (d/touch (d/entity (d/db conn) [:document/filename "A"]))
 
   (d/transact! conn
-    [{:var/namespace+name ['person 'name]
-      :var/row 0
-      :var/row-end 1
-      :var/col 0
-      :var/col-end 1}])
+    [[:db/retractEntity [:document/filename "A"]]])
 
-  (d/touch (d/entity (d/db conn) [:var/namespace+name ['person 'name]]))
+  (d/transact! conn
+    [[:db/retract [:document/filename "A"] :document/parts]])
+
+  (d/transact! conn
+    [[:db/retract [:document/filename "A"] :document/parts]
+
+     {:document/filename "A"
+      :document/parts
+      [{:var/namespace 'person
+        :var/name 'firstname}]}])
 
 
   (d/q '[:find  (pull ?v [*])
          :where
-         [?v :var/row 0]
-         [?v :var/col 0]]
+         [?v :var/namespace person]]
     (d/db conn))
 
 
