@@ -6,10 +6,10 @@
    [clj-kondo.core :as clj-kondo]))
 
 (def schema
-  {:document/filename
+  {:file/path
    {:db/unique :db.unique/identity}
 
-   :document/parts
+   :file/forms
    {:db/valueType   :db.type/ref
     :db/cardinality :db.cardinality/many
     :db/isComponent true}})
@@ -106,27 +106,30 @@
 
 
   (d/transact! conn
-    [{:document/filename "A"
-      :document/parts
+    [{:file/path "a.clj"
+      :file/forms
       [{:var/namespace 'person
-        :var/name 'name}
-
-       {:var/namespace 'person
-        :var/name 'lastname}]}])
-
-  (d/touch (d/entity (d/db conn) [:document/filename "A"]))
+        :var/name 'first-name}]}])
 
   (d/transact! conn
-    [[:db/retractEntity [:document/filename "A"]]])
+    [{:file/path "b.clj"
+      :file/forms
+      [{:var/namespace 'person
+        :var/name 'last-name}]}])
+
+  (d/touch (d/entity (d/db conn) [:file/path "a.clj"]))
 
   (d/transact! conn
-    [[:db/retract [:document/filename "A"] :document/parts]])
+    [[:db/retractEntity [:file/path "a.clj"]]])
 
   (d/transact! conn
-    [[:db/retract [:document/filename "A"] :document/parts]
+    [[:db/retract [:file/path "a.clj"] :file/forms]])
 
-     {:document/filename "A"
-      :document/parts
+  (d/transact! conn
+    [[:db/retract [:file/path "a.clj"] :file/forms]
+
+     {:file/path "a.clj"
+      :file/forms
       [{:var/namespace 'person
         :var/name 'firstname}]}])
 
