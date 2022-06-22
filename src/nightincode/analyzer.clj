@@ -12,6 +12,17 @@
    :file/forms
    {:db/valueType   :db.type/ref
     :db/cardinality :db.cardinality/many
+    :db/isComponent true}
+
+   ;; Encode an ident locations.
+   ;; It's a cardinality many since an entity
+   ;; might encode its location in more than a single range.
+   ;;
+   ;; E.g. namespace-usage: its location is encoded in the range of the namespace symbol,
+   ;; as well as in the range of the alias symbol.
+   :loc/locs
+   {:db/valueType   :db.type/ref
+    :db/cardinality :db.cardinality/many
     :db/isComponent true}})
 
 (def default-clj-kondo-config
@@ -51,7 +62,11 @@
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  (mnamespaced "var" m))
+  (merge (mnamespaced "var" m)
+    {:loc/locs
+     [{:loc/row (:name-row m)
+       :loc/col  (:name-col m)
+       :loc/col-end  (:name-end-col m)}]}))
 
 (defn var-usage-data
   [m]

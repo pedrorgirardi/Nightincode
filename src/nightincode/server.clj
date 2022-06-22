@@ -874,6 +874,21 @@
     (d/db (_analyzer-conn @state-ref))
     "/Users/pedro/Developer/lispi/src/lispi/core.clj")
 
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :in $
+         :where
+         [?e :loc/locs ?locs]
+         [?locs :loc/row 92]
+         [?locs :loc/col 6]
+         [?locs :loc/col-end 18]]
+    (d/db (_analyzer-conn @state-ref)))
+
+  (d/q '[:find  ?l
+         :in $
+         :where
+         [?l :loc/locs]]
+    (d/db (_analyzer-conn @state-ref)))
+
   (lsp/handle
     {:method "textDocument/completion"
      :params
