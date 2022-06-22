@@ -24,7 +24,7 @@
    :output
    {:canonical-paths true}})
 
-(defn persisted-var
+(defn canonical-var-data
   "Var data defined to be persisted in the database."
   [definition]
 
@@ -62,6 +62,24 @@
     {}
     analysis))
 
+(defn prepare
+  "Returns tx-data for vars, var-usages, etc.., derived from `index`."
+  [index]
+  (into []
+    (mapcat
+      (fn [[_ analysis]]
+        (reduce-kv
+          (fn [tx-data semantic items]
+            (cond
+              (= semantic :var-definitions)
+              (into tx-data (map canonical-var-data) items)
+
+              :else
+              tx-data))
+          []
+          analysis)))
+    index))
+
 (comment
 
   (def example1-path
@@ -81,6 +99,9 @@
 
   (def indexed
     (index (:analysis result)))
+
+  (def prepared
+    (prepare indexed))
 
   (keys indexed)
 
@@ -104,6 +125,18 @@
 
 
   (def conn (d/create-conn schema))
+
+  (d/transact! conn prepared)
+
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :var/name schema]]
+    (d/db conn))
+
+  (d/q '[:find  [(pull ?v [:var/name]) ...]
+         :where
+         [?v :var/namespace nightincode.analyzer]]
+    (d/db conn))
 
 
   (d/transact! conn
