@@ -26,7 +26,7 @@
           (analyzer/index
             {:var-definitions var-definitions})))))
 
-(deftest prepare-test
+#_(deftest prepare-test
   (is (= '[{:var/col 1,
             :var/col-end 5,
             :var/defined-by clojure.core/def,
