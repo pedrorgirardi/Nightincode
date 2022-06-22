@@ -24,6 +24,25 @@
    :output
    {:canonical-paths true}})
 
+(defn mnamespaced [ns m]
+  (into {}
+    (comp
+      (remove
+        (fn [[_ v]]
+          (nil? v)))
+      (map
+        (fn [[k v]]
+          [(keyword ns (name k)) v])))
+    m))
+
+(defn namespace-data
+  [definition]
+  (mnamespaced "namespace" definition))
+
+(defn namespace-usage-data
+  [usage]
+  (mnamespaced "namespace-usage" usage))
+
 (defn var-data
   "Var data defined to be persisted in the database."
   [definition]
@@ -32,21 +51,11 @@
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  (merge #:var {:namespace (:ns definition)
-                :name (:name definition)
-                :lang (:lang definition :clj)
-                :row (:row definition)
-                :row-end (:end-row definition)
-                :col (:col definition)
-                :col-end (:end-col definition)
-                :name-row (:name-row definition)
-                :name-row-end (:name-end-row definition)
-                :name-col (:name-col definition)
-                :name-col-end (:name-end-col definition)
-                :defined-by (:defined-by definition)
-                :filename (:filename definition)}
-    (when-let [doc (:doc definition)]
-      {:var/doc doc})))
+  (mnamespaced "var" definition))
+
+(defn var-usage-data
+  [usage]
+  (mnamespaced "var-usage" usage))
 
 (defn merge-index [a b]
     (merge-with into a b))
@@ -70,12 +79,21 @@
       (fn [[_ analysis]]
         (reduce-kv
           (fn [tx-data semantic items]
-            (cond
-              (= semantic :var-definitions)
-              (into tx-data (map var-data) items)
+            (let [xform (cond
+                          (= semantic :namespace-definitions)
+                          (map namespace-data)
 
-              :else
-              tx-data))
+                          (= semantic :namespace-usages)
+                          (map namespace-usage-data)
+
+                          (= semantic :var-definitions)
+                          (map var-data)
+
+                          (= semantic :var-usages)
+                          (map var-usage-data))]
+              (if xform
+                (into tx-data xform items)
+                tx-data)))
           []
           analysis)))
     index))
@@ -109,34 +127,52 @@
 
 
   ;; Example of a Var definition:
-  '{:end-row 5,
-    :name-end-col 4,
-    :name-end-row 4,
-    :name-row 4,
-    :ns example1,
-    :name a,
-    :defined-by clojure.core/def,
-    :lang :clj,
-    :filename "/Users/pedro/Developer/Nightincode/test/example1.cljc",
-    :col 1,
-    :name-col 3,
-    :end-col 5,
-    :row 3}
+  (mnamespaced "var"
+    '{:end-row 5,
+      :name-end-col 4,
+      :name-end-row 4,
+      :name-row 4,
+      :ns example1,
+      :name a,
+      :defined-by clojure.core/def,
+      :lang :clj,
+      :filename "/Users/pedro/Developer/Nightincode/test/example1.cljc",
+      :col 1,
+      :name-col 3,
+      :end-col 5,
+      :row 3})
 
 
   (def conn (d/create-conn schema))
 
   (d/transact! conn prepared)
 
-  (d/q '[:find  [(pull ?v [*]) ...]
+  ;; Every Namespace:
+  (d/q '[:find  [(pull ?v [:namespace/name]) ...]
          :where
-         [?v :var/name schema]]
+         [?v :namespace/filename]]
     (d/db conn))
 
-  (d/q '[:find  [(pull ?v [:var/name]) ...]
+  ;; Every Namespace usage:
+  (d/q '[:find  [(pull ?v [:namespace-usage/to :namespace-usage/lang]) ...]
          :where
-         [?v :var/namespace nightincode.analyzer]]
+         [?v :namespace-usage/filename]]
     (d/db conn))
+
+  ;; Every Var:
+  (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
+         :where
+         [?v :var/ns]]
+    (d/db conn))
+
+  ;; Every Var usage:
+  (d/q '[:find  [(pull ?v [:var-usage/from :var-usage/to :var-usage/name]) ...]
+         :where
+         [?v :var-usage/from]]
+    (d/db conn))
+
+
+
 
 
   (d/transact! conn
