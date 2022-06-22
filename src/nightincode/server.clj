@@ -7,9 +7,13 @@
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.java.shell :as shell]
+   [clojure.stacktrace :as stacktrace]
 
    [clj-kondo.core :as clj-kondo]
-   [lspie.api :as lsp])
+   [lspie.api :as lsp]
+   [datascript.core :as d]
+
+   [nightincode.analyzer :as analyzer])
 
   (:import
    (java.util.concurrent
@@ -367,15 +371,33 @@
   (symbol (str to) (str name)))
 
 
-(defn V-location
+(defn var-location
   "Returns a LSP Location for a Var definition or usage.
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
-  [{:keys [filename
-           name-row
-           name-end-row
-           name-col
-           name-end-col]}]
+  [{:var/keys [filename
+               name-row
+               name-end-row
+               name-col
+               name-end-col]}]
+  {:uri (.toString (filepath-uri filename))
+   :range
+   {:start
+    {:line (dec name-row)
+     :character (dec name-col)}
+    :end
+    {:line (dec name-end-row)
+     :character (dec name-end-col)}}})
+
+(defn var-usage-location
+  "Returns a LSP Location for a Var usage.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
+  [{:var-usage/keys [filename
+                     name-row
+                     name-end-row
+                     name-col
+                     name-end-col]}]
   {:uri (.toString (filepath-uri filename))
    :range
    {:start
@@ -400,6 +422,9 @@
 
 (defn _root-path [state]
   (get-in state [:LSP/InitializeParams :rootPath]))
+
+(defn _analyzer-conn [state]
+  (get-in state [:nightincode/analyzer :conn]))
 
 (defn _project-index [state]
   (get-in state [:nightincode/index :project]))
@@ -438,7 +463,9 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#serverCapabilities
 
-  (swap! state-ref assoc :LSP/InitializeParams (:params request))
+  (swap! state-ref assoc
+    :LSP/InitializeParams (:params request)
+    :nightincode/analyzer {:conn (d/create-conn analyzer/schema)})
 
   (lsp/response request
     {:capabilities
@@ -523,8 +550,13 @@
 
 
     (when-let [lint (analyzer-paths (_root-path @state-ref))]
-      (let [result (analyze {:lint lint})]
-        (swap! state-ref !index-project result)))))
+      (let [{:keys [analysis]} (analyze {:lint lint})
+
+            index (analyzer/index analysis)
+
+            tx-data (analyzer/prepare index)]
+
+        (d/transact! (_analyzer-conn @state-ref) tx-data)))))
 
 (defmethod lsp/handle "shutdown" [request]
 
@@ -628,26 +660,30 @@
 
           document-index (_text-document-index @state-ref textDocument)
 
-          project-index (_project-index @state-ref)
-
           row+col [(inc cursor-line) (inc cursor-character)]
 
           T (?T_ document-index row+col)
 
           D (case (TT T)
               :nightincode/VD
-              (let [k (VD-ident T)
-
-                    VD (or ((IVD document-index) k) ((IVD project-index) k))]
-
-                (map V-location VD))
+              (map var-location (d/q '[:find [(pull ?v [*]) ...]
+                                       :in $ ?ns ?name
+                                       :where
+                                       [?v :var/ns ?ns]
+                                       [?v :var/name ?name]]
+                                  (d/db (_analyzer-conn @state-ref))
+                                  (:ns T)
+                                  (:name T)))
 
               :nightincode/VU
-              (let [k (VU-ident T)
-
-                    VD (or ((IVD document-index) k) ((IVD project-index) k))]
-
-                (map V-location VD))
+              (map var-location (d/q '[:find [(pull ?v [*]) ...]
+                                       :in $ ?ns ?name
+                                       :where
+                                       [?v :var/ns ?ns]
+                                       [?v :var/name ?name]]
+                                  (d/db (_analyzer-conn @state-ref))
+                                  (:from T)
+                                  (:name T)))
 
               nil)]
 
@@ -656,7 +692,8 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find a definition. (%s)"(ex-message ex))}))))
+         :message (format "Sorry. Nightincode failed to find a definition. (%s)\n"
+                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/references" [request]
 
@@ -684,13 +721,13 @@
               (let [k (VD-ident T)
 
                     VU (or ((IVU document-index) k) ((IVU project-index) k))]
-                (map V-location VU))
+                (map var-location VU))
 
               :nightincode/VU
               (let [k (VU-ident T)
 
                     VU (or ((IVU document-index) k) ((IVU project-index) k))]
-                (map V-location VU))
+                (map var-location VU))
 
               nil)]
 
@@ -834,6 +871,12 @@
   (keys index)
 
   (:project index)
+
+
+  (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
+         :where
+         [?v :var/filename]]
+    (d/db (_analyzer-conn @state-ref)))
 
   (lsp/handle
     {:method "textDocument/completion"
