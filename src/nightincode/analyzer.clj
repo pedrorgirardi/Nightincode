@@ -116,6 +116,14 @@
           analysis)))
     index))
 
+(defn ?vars [db {:var/keys [ns name]}]
+  (d/q '[:find [(pull ?v [*]) ...]
+         :in $ ?ns ?name
+         :where
+         [?v :var/ns ?ns]
+         [?v :var/name ?name]]
+    db ns name))
+
 (comment
 
   (def example1-path

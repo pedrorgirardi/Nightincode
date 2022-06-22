@@ -662,28 +662,22 @@
 
           row+col [(inc cursor-line) (inc cursor-character)]
 
+          db (d/db (_analyzer-conn @state-ref))
+
           T (?T_ document-index row+col)
 
           D (case (TT T)
               :nightincode/VD
-              (map var-location (d/q '[:find [(pull ?v [*]) ...]
-                                       :in $ ?ns ?name
-                                       :where
-                                       [?v :var/ns ?ns]
-                                       [?v :var/name ?name]]
-                                  (d/db (_analyzer-conn @state-ref))
-                                  (:ns T)
-                                  (:name T)))
+              (let [vars (analyzer/?vars db
+                           {:var/ns (:ns T)
+                            :var/name (:name T)})]
+                (map var-location vars))
 
               :nightincode/VU
-              (map var-location (d/q '[:find [(pull ?v [*]) ...]
-                                       :in $ ?ns ?name
-                                       :where
-                                       [?v :var/ns ?ns]
-                                       [?v :var/name ?name]]
-                                  (d/db (_analyzer-conn @state-ref))
-                                  (:from T)
-                                  (:name T)))
+              (let [vars (analyzer/?vars db
+                           {:var/ns (:from T)
+                            :var/name (:name T)})]
+                (map var-location vars))
 
               nil)]
 
