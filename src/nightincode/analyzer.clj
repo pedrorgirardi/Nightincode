@@ -24,7 +24,7 @@
    :output
    {:canonical-paths true}})
 
-(defn canonical-var-data
+(defn var-data
   "Var data defined to be persisted in the database."
   [definition]
 
@@ -72,7 +72,7 @@
           (fn [tx-data semantic items]
             (cond
               (= semantic :var-definitions)
-              (into tx-data (map canonical-var-data) items)
+              (into tx-data (map var-data) items)
 
               :else
               tx-data))
