@@ -87,33 +87,35 @@
   "Returns tx-data for vars, var-usages, etc.., derived from `index`."
   [index]
   (into []
-    (mapcat
-      (fn [[_ analysis]]
-        (reduce-kv
-          (fn [tx-data semantic items]
-            (let [xform (cond
-                          (= semantic :namespace-definitions)
-                          (map namespace-data)
+    (map
+      (fn [[filename analysis]]
+        (let [forms (reduce-kv
+                      (fn [tx-data semantic items]
+                        (let [xform (cond
+                                      (= semantic :namespace-definitions)
+                                      (map namespace-data)
 
-                          (= semantic :namespace-usages)
-                          (map namespace-usage-data)
+                                      (= semantic :namespace-usages)
+                                      (map namespace-usage-data)
 
-                          (= semantic :var-definitions)
-                          (map var-data)
+                                      (= semantic :var-definitions)
+                                      (map var-data)
 
-                          (= semantic :var-usages)
-                          (map var-usage-data)
+                                      (= semantic :var-usages)
+                                      (map var-usage-data)
 
-                          (= semantic :locals)
-                          (map local-data)
+                                      (= semantic :locals)
+                                      (map local-data)
 
-                          (= semantic :keywords)
-                          (map keyword-data))]
-              (if xform
-                (into tx-data xform items)
-                tx-data)))
-          []
-          analysis)))
+                                      (= semantic :keywords)
+                                      (map keyword-data))]
+                          (if xform
+                            (into tx-data xform items)
+                            tx-data)))
+                      []
+                      analysis)]
+          {:file/path filename
+           :file/forms forms})))
     index))
 
 (defn ?vars [db {:var/keys [ns name]}]

@@ -867,10 +867,12 @@
   (:project index)
 
 
-  (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
+  (d/q '[:find  [(pull ?f [*]) ...]
+         :in $ ?path
          :where
-         [?v :var/filename]]
-    (d/db (_analyzer-conn @state-ref)))
+         [?f :file/path ?path]]
+    (d/db (_analyzer-conn @state-ref))
+    "/Users/pedro/Developer/lispi/src/lispi/core.clj")
 
   (lsp/handle
     {:method "textDocument/completion"
