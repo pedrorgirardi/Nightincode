@@ -57,9 +57,7 @@
       (merge-with merge-index index (into {}
                                       (map
                                         (fn [[filename items]]
-                                          {filename
-                                           {:analysis
-                                            {semantic items}}}))
+                                          {filename {semantic items}}))
                                       (group-by :filename items))))
     {}
     analysis))
@@ -69,9 +67,12 @@
   (def example1-path
     (.getPath (io/resource "example1.cljc")))
 
+  (def nightincode-path
+    "/Users/pedro/Developer/Nightincode/src")
+
   (def result
     (clj-kondo/run!
-      {:lint [example1-path]
+      {:lint [nightincode-path]
        :config default-clj-kondo-config}))
 
   (keys result)
@@ -83,7 +84,7 @@
 
   (keys indexed)
 
-  (indexed example1-path)
+  (indexed "/Users/pedro/Developer/Nightincode/src/nightincode/server.clj")
 
 
   ;; Example of a Var definition:
