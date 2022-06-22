@@ -36,26 +36,38 @@
     m))
 
 (defn namespace-data
-  [definition]
-  (mnamespaced "namespace" definition))
+  [m]
+  (mnamespaced "namespace" m))
 
 (defn namespace-usage-data
-  [usage]
-  (mnamespaced "namespace-usage" usage))
+  [m]
+  (mnamespaced "namespace-usage" m))
 
 (defn var-data
   "Var data defined to be persisted in the database."
-  [definition]
+  [m]
 
   ;; Note:
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  (mnamespaced "var" definition))
+  (mnamespaced "var" m))
 
 (defn var-usage-data
-  [usage]
-  (mnamespaced "var-usage" usage))
+  [m]
+  (mnamespaced "var-usage" m))
+
+(defn local-data
+  [m]
+  (mnamespaced "local" m))
+
+(defn local-usage-data
+  [m]
+  (mnamespaced "local-usage" m))
+
+(defn keyword-data
+  [m]
+  (mnamespaced "keyword" m))
 
 (defn merge-index [a b]
     (merge-with into a b))
@@ -90,7 +102,13 @@
                           (map var-data)
 
                           (= semantic :var-usages)
-                          (map var-usage-data))]
+                          (map var-usage-data)
+
+                          (= semantic :locals)
+                          (map local-data)
+
+                          (= semantic :keywords)
+                          (map keyword-data))]
               (if xform
                 (into tx-data xform items)
                 tx-data)))
@@ -145,7 +163,7 @@
 
   (def conn (d/create-conn schema))
 
-  (d/transact! conn prepared)
+  (def tx-report (d/transact! conn prepared))
 
   ;; Every Namespace:
   (d/q '[:find  [(pull ?v [:namespace/name]) ...]
@@ -162,13 +180,13 @@
   ;; Every Var:
   (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
          :where
-         [?v :var/ns]]
+         [?v :var/filename]]
     (d/db conn))
 
   ;; Every Var usage:
   (d/q '[:find  [(pull ?v [:var-usage/from :var-usage/to :var-usage/name]) ...]
          :where
-         [?v :var-usage/from]]
+         [?v :var-usage/filename]]
     (d/db conn))
 
 
