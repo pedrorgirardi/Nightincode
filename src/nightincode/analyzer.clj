@@ -180,6 +180,19 @@
            :file/semthetics forms})))
     index))
 
+(defn ?semthetic_ [db {:keys [filename row col col-end]}]
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :in $ ?filename ?row ?col ?col-end
+         :where
+         [?e :semthetic/locs ?locs]
+         [?e :semthetic/filename ?filename]
+         [?locs :loc/row ?row]
+         [?locs :loc/col ?col_]
+         [?locs :loc/col-end ?col-end_]
+         [(>= ?col ?col_)]
+         [(<= ?col-end ?col-end_)]]
+    db filename row col col-end))
+
 (defn ?vars [db {:keys [ns name]}]
   (d/q '[:find [(pull ?v [*]) ...]
          :in $ ?ns ?name

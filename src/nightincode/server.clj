@@ -942,13 +942,44 @@
     "/Users/pedro/Developer/lispi/src/lispi/core.clj")
 
   (d/q '[:find  [(pull ?e [*]) ...]
-         :in $
          :where
          [?e :loc/locs ?locs]
-         [?locs :loc/row 92]
-         [?locs :loc/col 6]
-         [?locs :loc/col-end 18]]
-    (d/db (_analyzer-conn @state-ref)))
+         [?locs :loc/row 189]
+         [?locs :loc/col ?col]
+         [?locs :loc/col-end ?col-end]
+         [(>= ?col 12)]
+         [(<= ?col-end 12)]]
+    (d/db conn))
+
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :where
+         [?e :semthetic/locs ?locs]
+         [?e :semthetic/filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"]
+         [?locs :loc/row 183]
+         [?locs :loc/col ?col]
+         [?locs :loc/col-end ?col-end]
+         [(>= 7 ?col)]
+         [(<= 12 ?col-end)]]
+    (d/db conn))
+
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :where
+         [?e :semthetic/locs ?locs]
+         [?e :semthetic/filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"]
+         [?locs :loc/row 183]]
+    (d/db conn))
+
+  (analyzer/?semthetic_ (d/db conn)
+    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
+     :row 183
+     :col 7
+     :col-end 7})
+
+  (analyzer/?semthetic_ (d/db conn)
+    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
+     :row 183
+     :col 31
+     :col-end 31})
 
   (d/q '[:find  ?l
          :in $
