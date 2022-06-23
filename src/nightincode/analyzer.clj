@@ -35,7 +35,7 @@
    :output
    {:canonical-paths true}})
 
-(defn mnamespaced [ns m]
+(defn semthetic [ns m]
   (into {}
     (comp
       (remove
@@ -48,11 +48,11 @@
 
 (defn namespace-data
   [m]
-  (mnamespaced "namespace" m))
+  (semthetic "namespace" m))
 
 (defn namespace-usage-data
   [m]
-  (mnamespaced "namespace-usage" m))
+  (semthetic "namespace-usage" m))
 
 (defn var-data
   "Var data defined to be persisted in the database."
@@ -62,7 +62,7 @@
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  (merge (mnamespaced "var" m)
+  (merge (semthetic "var" m)
     {:loc/locs
      [{:loc/row (:name-row m)
        :loc/col  (:name-col m)
@@ -70,19 +70,19 @@
 
 (defn var-usage-data
   [m]
-  (mnamespaced "var-usage" m))
+  (semthetic "var-usage" m))
 
 (defn local-data
   [m]
-  (mnamespaced "local" m))
+  (semthetic "local" m))
 
 (defn local-usage-data
   [m]
-  (mnamespaced "local-usage" m))
+  (semthetic "local-usage" m))
 
 (defn keyword-data
   [m]
-  (mnamespaced "keyword" m))
+  (semthetic "keyword" m))
 
 (defn merge-index [a b]
     (merge-with into a b))
@@ -170,7 +170,7 @@
 
 
   ;; Example of a Var definition:
-  (mnamespaced "var"
+  (semthetic "var"
     '{:end-row 5,
       :name-end-col 4,
       :name-end-row 4,
