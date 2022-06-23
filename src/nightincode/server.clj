@@ -554,7 +554,7 @@
 
             index (analyzer/index analysis)
 
-            tx-data (analyzer/prepare index)]
+            tx-data (analyzer/prepare-transaction index)]
 
         (d/transact! (_analyzer-conn @state-ref) tx-data)))))
 
