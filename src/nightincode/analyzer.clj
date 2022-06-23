@@ -56,14 +56,22 @@
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
      :semthetic/qualifier :namespace
-     :semthetic/filename (:filename m)}))
+     :semthetic/filename (:filename m)
+     :semthetic/locs
+     [{:loc/row (:name-row m)
+       :loc/col  (:name-col m)
+       :loc/col-end  (:name-end-col m)}]}))
 
 (defn namespace-usage-data
   [m]
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :namespace
-     :semthetic/filename (:filename m)}))
+     :semthetic/filename (:filename m)
+     :semthetic/locs
+     [{:loc/row (:name-row m)
+       :loc/col  (:name-col m)
+       :loc/col-end  (:name-end-col m)}]}))
 
 (defn var-data
   "Var data defined to be persisted in the database."
@@ -109,12 +117,20 @@
   (merge (semthetic "local-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :local
-     :semthetic/filename (:filename m)}))
+     :semthetic/filename (:filename m)
+     :semthetic/locs
+     [{:loc/row (or (:name-row m) (:row m))
+       :loc/col  (or (:name-col m) (:col m))
+       :loc/col-end  (or (:name-end-col m) (:end-col m))}]}))
 
 (defn keyword-data
   [m]
   (merge (semthetic "keyword" m)
-    {:semthetic/filename (:filename m)}))
+    {:semthetic/filename (:filename m)
+     :semthetic/locs
+     [{:loc/row (:row m)
+       :loc/col  (:col m)
+       :loc/col-end (:end-col m)}]}))
 
 (defn merge-index [a b]
   (merge-with into a b))
