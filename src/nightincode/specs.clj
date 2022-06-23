@@ -14,7 +14,7 @@
 (s/def :semthetic/semantic
   #{:def :usage})
 
-(s/def :semthetic/qualifier
+(s/def :semthetic/modifier
   #{:namespace :var :local})
 
 (s/def :semthetic/identifier
@@ -27,7 +27,7 @@
 
 (s/def :semthetic/semthetic
   (s/keys :opt [:semthetic/semantic
-                :semthetic/qualifier
+                :semthetic/modifier
                 :semthetic/identifier
                 :semthetic/label
                 :semthetic/locs]))

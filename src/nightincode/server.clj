@@ -772,12 +772,12 @@
                         db)
 
           symbols (mapcat
-                    (fn [{:semthetic/keys [label qualifier filename locs]}]
+                    (fn [{:semthetic/keys [label modifier filename locs]}]
                       (map
                         (fn [loc]
                           {:name (or label "-")
                            :location (analyzer/loc-location filename loc)
-                           :kind (case qualifier
+                           :kind (case modifier
                                    :namespace
                                    3
 
@@ -969,7 +969,7 @@
 
   (analyzer/?usages (d/db conn)
     '{:semthetic/semantic :def,
-      :semthetic/qualifier :var,
+      :semthetic/modifier :var,
       :semthetic/identifier nightincode.analyzer/?semthetic_})
 
   (d/q '[:find [(pull ?e [*]) ...]
