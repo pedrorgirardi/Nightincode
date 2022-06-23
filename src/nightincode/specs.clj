@@ -22,12 +22,16 @@
 
 (s/def :semthetic/label string?)
 
+(s/def :semthetic/filename string?)
+
 (s/def :semthetic/locs
   (s/coll-of :loc/loc))
 
 (s/def :semthetic/semthetic
-  (s/keys :opt [:semthetic/semantic
-                :semthetic/modifier
-                :semthetic/identifier
-                :semthetic/label
-                :semthetic/locs]))
+  (s/keys
+    :req [:semthetic/semantic
+          :semthetic/modifier
+          :semthetic/locs
+          :semthetic/filename]
+    :opt [:semthetic/identifier
+          :semthetic/label]))
