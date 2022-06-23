@@ -1,9 +1,14 @@
 (ns nightincode.analyzer
   (:require
    [clojure.java.io :as io]
+   [clojure.spec.alpha :as s]
+   [clojure.tools.logging :as log]
+   [clojure.pprint :as pprint]
 
    [datascript.core :as d]
-   [clj-kondo.core :as clj-kondo]))
+   [clj-kondo.core :as clj-kondo]
+
+   [nightincode.specs]))
 
 (def schema
   {:file/path
@@ -155,7 +160,19 @@
                                       (= semantic :keywords)
                                       (map keyword-data))]
                           (if xform
-                            (into tx-data xform items)
+                            (into tx-data
+                              (comp
+                                xform
+                                (filter
+                                  (fn [semthetic]
+                                    (or (s/valid? :semthetic/semthetic semthetic)
+                                      (log/warn
+                                        (str "Invalid Semthetic:"
+                                          "\n"
+                                          (with-out-str (pprint/pprint semthetic))
+                                          "\nExplain:\n"
+                                          (s/explain-str :semthetic/semthetic semthetic)))))))
+                              items)
                             tx-data)))
                       []
                       analysis)]
