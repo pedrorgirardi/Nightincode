@@ -371,42 +371,6 @@
   (symbol (str to) (str name)))
 
 
-(defn var-location
-  "Returns a LSP Location for a Var definition or usage.
-
-  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
-  [{:var/keys [filename
-               name-row
-               name-end-row
-               name-col
-               name-end-col]}]
-  {:uri (.toString (filepath-uri filename))
-   :range
-   {:start
-    {:line (dec name-row)
-     :character (dec name-col)}
-    :end
-    {:line (dec name-end-row)
-     :character (dec name-end-col)}}})
-
-(defn var-usage-location
-  "Returns a LSP Location for a Var usage.
-
-  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
-  [{:var-usage/keys [filename
-                     name-row
-                     name-end-row
-                     name-col
-                     name-end-col]}]
-  {:uri (.toString (filepath-uri filename))
-   :range
-   {:start
-    {:line (dec name-row)
-     :character (dec name-col)}
-    :end
-    {:line (dec name-end-row)
-     :character (dec name-end-col)}}})
-
 ;; ---------------------------------------------------------
 
 ;; -- Functions to read and write from and to state
