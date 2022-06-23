@@ -48,11 +48,13 @@
 
 (defn namespace-data
   [m]
-  (semthetic "namespace" m))
+  (merge (semthetic "namespace" m)
+    {:semthetic/filename (:filename m)}))
 
 (defn namespace-usage-data
   [m]
-  (semthetic "namespace-usage" m))
+  (merge (semthetic "namespace-usage" m)
+    {:semthetic/filename (:filename m)}))
 
 (defn var-data
   "Var data defined to be persisted in the database."
@@ -63,7 +65,7 @@
   ;; Row & col, without name, encode the form location.
 
   (merge (semthetic "var" m)
-    {:semthetic/ns (:ns m)
+    {:semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
        :loc/col  (:name-col m)
@@ -72,7 +74,8 @@
 (defn var-usage-data
   [m]
   (merge (semthetic "var-usage" m)
-    {:semthetic/locs
+    {:semthetic/filename (:filename m)
+     :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
        :loc/col  (or (:name-col m) (:col m))
        :loc/col-end  (or (:name-end-col m) (:end-col m))}]}))
@@ -80,21 +83,24 @@
 (defn local-data
   [m]
   (merge (semthetic "local" m)
-    {:semthetic/locs
+    {:semthetic/filename (:filename m)
+     :semthetic/locs
      [{:loc/row (:row m)
        :loc/col  (:col m)
        :loc/col-end (:end-col m)}]}))
 
 (defn local-usage-data
   [m]
-  (semthetic "local-usage" m))
+  (merge (semthetic "local-usage" m)
+    {:semthetic/filename (:filename m)}))
 
 (defn keyword-data
   [m]
-  (semthetic "keyword" m))
+  (merge (semthetic "keyword" m)
+    {:semthetic/filename (:filename m)}))
 
 (defn merge-index [a b]
-    (merge-with into a b))
+  (merge-with into a b))
 
 (defn index [analysis]
   (reduce
