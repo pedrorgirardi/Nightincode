@@ -669,14 +669,14 @@
           D (case (TT T)
               :nightincode/VD
               (let [vars (analyzer/?vars db
-                           {:var/ns (:ns T)
-                            :var/name (:name T)})]
+                           {:ns (:ns T)
+                            :name (:name T)})]
                 (map var-location vars))
 
               :nightincode/VU
               (let [vars (analyzer/?vars db
-                           {:var/ns (:from T)
-                            :var/name (:name T)})]
+                           {:ns (:from T)
+                            :name (:name T)})]
                 (map var-location vars))
 
               nil)]
@@ -704,24 +704,24 @@
 
           document-index (_text-document-index @state-ref textDocument)
 
-          project-index (_project-index @state-ref)
-
           row+col [(inc cursor-line) (inc cursor-character)]
 
           T (?T_ document-index row+col)
 
+          db (d/db (_analyzer-conn @state-ref))
+
           R (case (TT T)
               :nightincode/VD
-              (let [k (VD-ident T)
-
-                    VU (or ((IVU document-index) k) ((IVU project-index) k))]
-                (map var-location VU))
+              (let [vars (analyzer/?var-usages db
+                           {:ns (:ns T)
+                            :name (:name T)})]
+                (map var-usage-location vars))
 
               :nightincode/VU
-              (let [k (VU-ident T)
-
-                    VU (or ((IVU document-index) k) ((IVU project-index) k))]
-                (map var-location VU))
+              (let [vars (analyzer/?var-usages db
+                           {:ns (:from T)
+                            :name (:name T)})]
+                (map var-usage-location vars))
 
               nil)]
 
@@ -865,6 +865,13 @@
   (keys index)
 
   (:project index)
+
+
+  ;; Every Namespace usage:
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :var-usage/filename]]
+    (d/db (_analyzer-conn @state-ref)))
 
 
   (d/q '[:find  [(pull ?f [*]) ...]
