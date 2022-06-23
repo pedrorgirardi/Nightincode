@@ -254,21 +254,6 @@
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/qualifier semthetic) (:semthetic/identifier semthetic)))
 
-(defn ?vars [db {:keys [ns name]}]
-  (d/q '[:find [(pull ?v [*]) ...]
-         :in $ ?ns ?name
-         :where
-         [?v :var/ns ?ns]
-         [?v :var/name ?name]]
-    db ns name))
-
-(defn ?var-usages [db {:keys [ns name]}]
-  (d/q '[:find [(pull ?v [*]) ...]
-         :in $ ?ns ?name
-         :where
-         [?v :var-usage/to ?ns]
-         [?v :var-usage/name ?name]]
-    db ns name))
 
 (comment
 
