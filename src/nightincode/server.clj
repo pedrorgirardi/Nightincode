@@ -695,9 +695,6 @@
                        :col (inc cursor-character)
                        :col-end (inc cursor-character)})
 
-          _ (log/debug "semthetic" semthetic)
-          _ (log/debug "usages" (analyzer/?usages db semthetic))
-
           locations (mapcat
                       (fn [{:semthetic/keys [filename locs]}]
                         (map
