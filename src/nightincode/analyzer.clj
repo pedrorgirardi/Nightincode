@@ -181,7 +181,7 @@
     index))
 
 (defn ?semthetic_ [db {:keys [filename row col col-end]}]
-  (d/q '[:find  [(pull ?e [*]) ...]
+  (d/q '[:find  (pull ?e [*]) .
          :in $ ?filename ?row ?col ?col-end
          :where
          [?e :semthetic/locs ?locs]
