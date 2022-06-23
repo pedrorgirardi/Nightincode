@@ -927,6 +927,12 @@
          [?e :semthetic/semantic :def]]
     (d/db conn))
 
+  ;; Every usage:
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :where
+         [?e :semthetic/semantic :usage]]
+    (d/db conn))
+
 
   (d/q '[:find  [(pull ?f [*]) ...]
          :in $ ?path

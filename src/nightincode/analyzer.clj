@@ -55,7 +55,8 @@
 (defn namespace-usage-data
   [m]
   (merge (semthetic "namespace-usage" m)
-    {:semthetic/filename (:filename m)}))
+    {:semthetic/semantic :usage
+     :semthetic/filename (:filename m)}))
 
 (defn var-data
   "Var data defined to be persisted in the database."
@@ -76,7 +77,8 @@
 (defn var-usage-data
   [m]
   (merge (semthetic "var-usage" m)
-    {:semthetic/filename (:filename m)
+    {:semthetic/semantic :usage
+     :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
        :loc/col  (or (:name-col m) (:col m))
@@ -95,7 +97,8 @@
 (defn local-usage-data
   [m]
   (merge (semthetic "local-usage" m)
-    {:semthetic/filename (:filename m)}))
+    {:semthetic/semantic :usage
+     :semthetic/filename (:filename m)}))
 
 (defn keyword-data
   [m]
