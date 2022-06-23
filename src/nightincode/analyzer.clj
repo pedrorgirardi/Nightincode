@@ -70,6 +70,7 @@
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
      :semthetic/qualifier :namespace
+     :semthetic/label (:name m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -81,6 +82,7 @@
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :namespace
+     :semthetic/label (:to m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -95,27 +97,31 @@
   ;; Name row & col encode the location of the symbol.
   ;; Row & col, without name, encode the form location.
 
-  (merge (semthetic "var" m)
-    {:semthetic/semantic :def
-     :semthetic/qualifier :var
-     :semthetic/identifier (symbol (name (:ns m)) (name (:name m)))
-     :semthetic/filename (:filename m)
-     :semthetic/locs
-     [{:loc/row (:name-row m)
-       :loc/col  (:name-col m)
-       :loc/col-end  (:name-end-col m)}]}))
+  (let [sym (symbol (name (:ns m)) (name (:name m)))]
+    (merge (semthetic "var" m)
+      {:semthetic/semantic :def
+       :semthetic/qualifier :var
+       :semthetic/identifier sym
+       :semthetic/label (str sym)
+       :semthetic/filename (:filename m)
+       :semthetic/locs
+       [{:loc/row (:name-row m)
+         :loc/col  (:name-col m)
+         :loc/col-end  (:name-end-col m)}]})))
 
 (defn var-usage-data
   [m]
-  (merge (semthetic "var-usage" m)
-    {:semthetic/semantic :usage
-     :semthetic/qualifier :var
-     :semthetic/identifier (when-let [to (:to m)] (symbol (name to) (name (:name m))))
-     :semthetic/filename (:filename m)
-     :semthetic/locs
-     [{:loc/row (or (:name-row m) (:row m))
-       :loc/col  (or (:name-col m) (:col m))
-       :loc/col-end  (or (:name-end-col m) (:end-col m))}]}))
+  (let [sym (when-let [to (:to m)] (symbol (name to) (name (:name m))))]
+    (merge (semthetic "var-usage" m)
+      {:semthetic/semantic :usage
+       :semthetic/qualifier :var
+       :semthetic/identifier sym
+       :semthetic/label (str sym)
+       :semthetic/filename (:filename m)
+       :semthetic/locs
+       [{:loc/row (or (:name-row m) (:row m))
+         :loc/col  (or (:name-col m) (:col m))
+         :loc/col-end  (or (:name-end-col m) (:end-col m))}]})))
 
 (defn local-data
   [m]
@@ -123,6 +129,7 @@
     {:semthetic/semantic :def
      :semthetic/qualifier :local
      :semthetic/identifier (:id m)
+     :semthetic/label (:name m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
@@ -135,6 +142,7 @@
     {:semthetic/semantic :usage
      :semthetic/qualifier :local
      :semthetic/identifier (:id m)
+     :semthetic/label (:name m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
@@ -145,6 +153,7 @@
   [m]
   (merge (semthetic "keyword" m)
     {:semthetic/filename (:filename m)
+     :semthetic/label (:name m)
      :semthetic/locs
      [{:loc/row (:row m)
        :loc/col  (:col m)

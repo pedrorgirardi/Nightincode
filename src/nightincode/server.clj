@@ -472,7 +472,8 @@
       :textDocumentSync 1
       :definitionProvider true
       :referencesProvider true
-      :completionProvider {:triggerCharacters ["(" ":"]}}
+      :completionProvider {:triggerCharacters ["(" ":"]}
+      :workspaceSymbolProvider true}
 
      :serverInfo
      {:name "Nightincode"
@@ -791,6 +792,46 @@
       (lsp/error-response request
         {:code -32803
          :message (format "Sorry. Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
+
+(defmethod lsp/handle "workspace/symbol" [request]
+
+  ;; The workspace symbol request is sent from the client to the server to list project-wide symbols matching the query string.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol
+
+  (try
+    (let [db (d/db (_analyzer-conn @state-ref))
+
+          definitions (d/q '[:find [(pull ?e [*]) ...]
+                             :where
+                             [?e :semthetic/semantic :def]]
+                        db)
+
+          symbols (mapcat
+                    (fn [{:semthetic/keys [label qualifier filename locs]}]
+                      (map
+                        (fn [loc]
+                          {:name (or label "-")
+                           :location (analyzer/loc-location filename loc)
+                           :kind (case qualifier
+                                   :namespace
+                                   3
+
+                                   :var
+                                   13
+
+                                   ;; Default
+                                   13)})
+                        locs))
+                    definitions)]
+
+      (lsp/response request (seq symbols)))
+
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message (format "Sorry. Nightincode failed to find workspace symbols. (%s)\n"
+                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server

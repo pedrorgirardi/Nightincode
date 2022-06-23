@@ -20,6 +20,8 @@
 (s/def :semthetic/identifier
   (s/or :symbol symbol? :number number? :string string?))
 
+(s/def :semthetic/label string?)
+
 (s/def :semthetic/locs
   (s/coll-of :loc/loc))
 
@@ -27,4 +29,5 @@
   (s/keys :opt [:semthetic/semantic
                 :semthetic/qualifier
                 :semthetic/identifier
+                :semthetic/label
                 :semthetic/locs]))
