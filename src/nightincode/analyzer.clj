@@ -51,6 +51,20 @@
           [(keyword ns (name k)) v])))
     m))
 
+(defn loc-location
+  "Returns a LSP Location.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
+  [filename {:loc/keys [row col col-end]}]
+  {:uri (->  (io/file filename) .toPath .toUri .toString)
+   :range
+   {:start
+    {:line (dec row)
+     :character (dec col)}
+    :end
+    {:line (dec row)
+     :character (dec col-end)}}})
+
 (defn namespace-data
   [m]
   (merge (semthetic "namespace" m)
@@ -84,6 +98,7 @@
   (merge (semthetic "var" m)
     {:semthetic/semantic :def
      :semthetic/qualifier :var
+     :semthetic/identifier (symbol (name (:ns m)) (name (:name m)))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -95,6 +110,7 @@
   (merge (semthetic "var-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :var
+     :semthetic/identifier (symbol (name (:from m)) (name (:name m)))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
@@ -106,6 +122,7 @@
   (merge (semthetic "local" m)
     {:semthetic/semantic :def
      :semthetic/qualifier :local
+     :semthetic/identifier (:id m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
@@ -117,6 +134,7 @@
   (merge (semthetic "local-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :local
+     :semthetic/identifier (:id m)
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
@@ -208,6 +226,15 @@
          [(>= ?col ?col_)]
          [(<= ?col-end ?col-end_)]]
     db filename row col col-end))
+
+(defn ?definitions [db semthetic]
+  (d/q '[:find [(pull ?e [*]) ...]
+         :in $ ?qualifier ?identifier
+         :where
+         [?e :semthetic/semantic :def]
+         [?e :semthetic/qualifier ?qualifier]
+         [?e :semthetic/identifier ?identifier]]
+    db (:semthetic/qualifier semthetic) (:semthetic/identifier semthetic)))
 
 (defn ?vars [db {:keys [ns name]}]
   (d/q '[:find [(pull ?v [*]) ...]

@@ -658,30 +658,23 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          document-index (_text-document-index @state-ref textDocument)
-
-          row+col [(inc cursor-line) (inc cursor-character)]
-
           db (d/db (_analyzer-conn @state-ref))
 
-          T (?T_ document-index row+col)
+          semthetic (analyzer/?semthetic_ db
+                      {:filename (text-document-path textDocument)
+                       :row (inc cursor-line)
+                       :col (inc cursor-character)
+                       :col-end (inc cursor-character)})
 
-          D (case (TT T)
-              :nightincode/VD
-              (let [vars (analyzer/?vars db
-                           {:ns (:ns T)
-                            :name (:name T)})]
-                (map var-location vars))
+          locations (mapcat
+                      (fn [{:semthetic/keys [filename locs]}]
+                        (map
+                          (fn [loc]
+                            (analyzer/loc-location filename loc))
+                          locs))
+                      (analyzer/?definitions db semthetic))]
 
-              :nightincode/VU
-              (let [vars (analyzer/?vars db
-                           {:ns (:from T)
-                            :name (:name T)})]
-                (map var-location vars))
-
-              nil)]
-
-      (lsp/response request (seq D)))
+      (lsp/response request (seq locations)))
 
     (catch Exception ex
       (lsp/error-response request
@@ -971,9 +964,17 @@
 
   (analyzer/?semthetic_ (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
-     :row 183
-     :col 7
-     :col-end 7})
+     :row 216
+     :col 15
+     :col-end 15})
+
+  (analyzer/?semthetic_ (d/db conn)
+    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/server.clj"
+     :row 1032
+     :col 26
+     :col-end 26})
+
+  (analyzer/?definitions (d/db conn) *1)
 
   (analyzer/?semthetic_ (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
