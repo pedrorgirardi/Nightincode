@@ -432,15 +432,7 @@
 (defn _text-document-index [state textDocument]
   (get-in state [:nightincode/index (text-document-uri textDocument)]))
 
-(defn !index-project [state {:keys [analysis]}]
-  (let [index-V (index-V analysis)
-        index-K (index-K analysis)
 
-        index (merge index-V index-K)
-
-        state (update-in state [:nightincode/index :project] merge index)]
-
-    state))
 
 (defn !index-document [state {:keys [uri analysis]}]
   (let [index-V (index-V analysis)
@@ -679,7 +671,7 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find a definition. (%s)\n"
+         :message (format "Sorry. Nightincode failed to find definitions. (%s)\n"
                     (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/references" [request]
@@ -695,35 +687,32 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          document-index (_text-document-index @state-ref textDocument)
-
-          row+col [(inc cursor-line) (inc cursor-character)]
-
-          T (?T_ document-index row+col)
-
           db (d/db (_analyzer-conn @state-ref))
 
-          R (case (TT T)
-              :nightincode/VD
-              (let [vars (analyzer/?var-usages db
-                           {:ns (:ns T)
-                            :name (:name T)})]
-                (map var-usage-location vars))
+          semthetic (analyzer/?semthetic_ db
+                      {:filename (text-document-path textDocument)
+                       :row (inc cursor-line)
+                       :col (inc cursor-character)
+                       :col-end (inc cursor-character)})
 
-              :nightincode/VU
-              (let [vars (analyzer/?var-usages db
-                           {:ns (:from T)
-                            :name (:name T)})]
-                (map var-usage-location vars))
+          _ (log/debug "semthetic" semthetic)
+          _ (log/debug "usages" (analyzer/?usages db semthetic))
 
-              nil)]
+          locations (mapcat
+                      (fn [{:semthetic/keys [filename locs]}]
+                        (map
+                          (fn [loc]
+                            (analyzer/loc-location filename loc))
+                          locs))
+                      (analyzer/?usages db semthetic))]
 
-      (lsp/response request (seq R)))
+      (lsp/response request (seq locations)))
 
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find references. (%s)"(ex-message ex))}))))
+         :message (format "Sorry. Nightincode failed to find references. (%s)\n"
+                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
@@ -975,6 +964,18 @@
      :col-end 26})
 
   (analyzer/?definitions (d/db conn) *1)
+
+  (analyzer/?usages (d/db conn)
+    '{:semthetic/semantic :def,
+      :semthetic/qualifier :var,
+      :semthetic/identifier nightincode.analyzer/?semthetic_})
+
+  (d/q '[:find [(pull ?e [*]) ...]
+         :in $ ?qualifier ?identifier
+         :where
+         [?e :semthetic/semantic :usage]
+         ]
+    (d/db conn) :var 'nightincode.analyzer/?semthetic_)
 
   (analyzer/?semthetic_ (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"

@@ -110,7 +110,7 @@
   (merge (semthetic "var-usage" m)
     {:semthetic/semantic :usage
      :semthetic/qualifier :var
-     :semthetic/identifier (symbol (name (:from m)) (name (:name m)))
+     :semthetic/identifier (when-let [to (:to m)] (symbol (name to) (name (:name m))))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
@@ -232,6 +232,15 @@
          :in $ ?qualifier ?identifier
          :where
          [?e :semthetic/semantic :def]
+         [?e :semthetic/qualifier ?qualifier]
+         [?e :semthetic/identifier ?identifier]]
+    db (:semthetic/qualifier semthetic) (:semthetic/identifier semthetic)))
+
+(defn ?usages [db semthetic]
+  (d/q '[:find [(pull ?e [*]) ...]
+         :in $ ?qualifier ?identifier
+         :where
+         [?e :semthetic/semantic :usage]
          [?e :semthetic/qualifier ?qualifier]
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/qualifier semthetic) (:semthetic/identifier semthetic)))
