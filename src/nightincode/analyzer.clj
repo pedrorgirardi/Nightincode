@@ -50,12 +50,14 @@
   [m]
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
+     :semthetic/qualifier :namespace
      :semthetic/filename (:filename m)}))
 
 (defn namespace-usage-data
   [m]
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
+     :semthetic/qualifier :namespace
      :semthetic/filename (:filename m)}))
 
 (defn var-data
@@ -68,6 +70,7 @@
 
   (merge (semthetic "var" m)
     {:semthetic/semantic :def
+     :semthetic/qualifier :var
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -78,6 +81,7 @@
   [m]
   (merge (semthetic "var-usage" m)
     {:semthetic/semantic :usage
+     :semthetic/qualifier :var
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
@@ -88,6 +92,7 @@
   [m]
   (merge (semthetic "local" m)
     {:semthetic/semantic :def
+     :semthetic/qualifier :local
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
@@ -98,6 +103,7 @@
   [m]
   (merge (semthetic "local-usage" m)
     {:semthetic/semantic :usage
+     :semthetic/qualifier :local
      :semthetic/filename (:filename m)}))
 
 (defn keyword-data
