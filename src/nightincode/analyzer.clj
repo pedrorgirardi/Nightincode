@@ -49,7 +49,8 @@
 (defn namespace-data
   [m]
   (merge (semthetic "namespace" m)
-    {:semthetic/filename (:filename m)}))
+    {:semthetic/semantic :def
+     :semthetic/filename (:filename m)}))
 
 (defn namespace-usage-data
   [m]
@@ -65,7 +66,8 @@
   ;; Row & col, without name, encode the form location.
 
   (merge (semthetic "var" m)
-    {:semthetic/filename (:filename m)
+    {:semthetic/semantic :def
+     :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
        :loc/col  (:name-col m)
@@ -83,7 +85,8 @@
 (defn local-data
   [m]
   (merge (semthetic "local" m)
-    {:semthetic/filename (:filename m)
+    {:semthetic/semantic :def
+     :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
        :loc/col  (:col m)

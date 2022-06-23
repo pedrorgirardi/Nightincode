@@ -921,6 +921,12 @@
          [(missing? $ ?v :local-usage/name-row)]]
     (d/db conn))
 
+  ;; Every definition:
+  (d/q '[:find  [(pull ?e [*]) ...]
+         :where
+         [?e :semthetic/semantic :def]]
+    (d/db conn))
+
 
   (d/q '[:find  [(pull ?f [*]) ...]
          :in $ ?path
