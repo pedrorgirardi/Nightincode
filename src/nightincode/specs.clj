@@ -15,7 +15,7 @@
   #{:def :usage})
 
 (s/def :semthetic/modifier
-  #{:namespace :var :local})
+  #{:namespace :var :local :keyword})
 
 (s/def :semthetic/identifier
   (s/or :symbol symbol? :number number? :string string?))

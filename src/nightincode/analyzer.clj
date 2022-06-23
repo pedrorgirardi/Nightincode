@@ -152,8 +152,14 @@
 (defn keyword-data
   [m]
   (merge (semthetic "keyword" m)
-    {:semthetic/filename (:filename m)
+    {:semthetic/semantic :usage
+     :semthetic/modifier :keyword
+     :semthetic/filename (:filename m)
      :semthetic/label (:name m)
+     :semthetic/identifier
+     (if-let [ns (:ns m)]
+       (keyword (name ns) (:name m))
+       (keyword (:name m)))
      :semthetic/locs
      [{:loc/row (:row m)
        :loc/col  (:col m)
