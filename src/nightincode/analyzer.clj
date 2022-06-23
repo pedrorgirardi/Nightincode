@@ -9,7 +9,7 @@
   {:file/path
    {:db/unique :db.unique/identity}
 
-   :file/forms
+   :file/semthetics
    {:db/valueType   :db.type/ref
     :db/cardinality :db.cardinality/many
     :db/isComponent true}
@@ -20,7 +20,7 @@
    ;;
    ;; E.g. namespace-usage: its location is encoded in the range of the namespace symbol,
    ;; as well as in the range of the alias symbol.
-   :loc/locs
+   :semthetic/locs
    {:db/valueType   :db.type/ref
     :db/cardinality :db.cardinality/many
     :db/isComponent true}})
@@ -63,7 +63,8 @@
   ;; Row & col, without name, encode the form location.
 
   (merge (semthetic "var" m)
-    {:loc/locs
+    {:semthetic/ns (:ns m)
+     :semthetic/locs
      [{:loc/row (:name-row m)
        :loc/col  (:name-col m)
        :loc/col-end  (:name-end-col m)}]}))
@@ -130,7 +131,7 @@
                       []
                       analysis)]
           {:file/path filename
-           :file/forms forms})))
+           :file/semthetics forms})))
     index))
 
 (defn ?vars [db {:var/keys [ns name]}]
@@ -220,13 +221,13 @@
 
   (d/transact! conn
     [{:file/path "a.clj"
-      :file/forms
+      :file/semthetics
       [{:var/namespace 'person
         :var/name 'first-name}]}])
 
   (d/transact! conn
     [{:file/path "b.clj"
-      :file/forms
+      :file/semthetics
       [{:var/namespace 'person
         :var/name 'last-name}]}])
 
@@ -236,13 +237,13 @@
     [[:db/retractEntity [:file/path "a.clj"]]])
 
   (d/transact! conn
-    [[:db/retract [:file/path "a.clj"] :file/forms]])
+    [[:db/retract [:file/path "a.clj"] :file/semthetics]])
 
   (d/transact! conn
-    [[:db/retract [:file/path "a.clj"] :file/forms]
+    [[:db/retract [:file/path "a.clj"] :file/semthetics]
 
      {:file/path "a.clj"
-      :file/forms
+      :file/semthetics
       [{:var/namespace 'person
         :var/name 'firstname}]}])
 
