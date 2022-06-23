@@ -873,6 +873,12 @@
          [?v :var-usage/filename]]
     (d/db (_analyzer-conn @state-ref)))
 
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :var-usage/filename]
+         [(missing? $ ?v :var-usage/name-row)]]
+    (d/db (_analyzer-conn @state-ref)))
+
 
   (d/q '[:find  [(pull ?f [*]) ...]
          :in $ ?path

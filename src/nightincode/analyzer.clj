@@ -71,7 +71,11 @@
 
 (defn var-usage-data
   [m]
-  (semthetic "var-usage" m))
+  (merge (semthetic "var-usage" m)
+    {:semthetic/locs
+     [{:loc/row (or (:name-row m) (:row m))
+       :loc/col  (or (:name-col m) (:col m))
+       :loc/col-end  (or (:name-end-col m) (:end-col m))}]}))
 
 (defn local-data
   [m]
