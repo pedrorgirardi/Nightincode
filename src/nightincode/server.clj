@@ -867,17 +867,59 @@
   (:project index)
 
 
+  ;; -- Queries
+
+  (def conn (_analyzer-conn @state-ref))
+
+  ;; Every Namespace:
+  (d/q '[:find  [(pull ?v [:namespace/name]) ...]
+         :where
+         [?v :namespace/filename]]
+    (d/db conn))
+
   ;; Every Namespace usage:
-  (d/q '[:find  [(pull ?v [*]) ...]
+  (d/q '[:find  [(pull ?v [:namespace-usage/to :namespace-usage/lang]) ...]
+         :where
+         [?v :namespace-usage/filename]]
+    (d/db conn))
+
+  ;; Every Var:
+  (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
+         :where
+         [?v :var/filename]]
+    (d/db conn))
+
+  ;; Every Var usage:
+  (d/q '[:find  [(pull ?v [:var-usage/from :var-usage/to :var-usage/name]) ...]
          :where
          [?v :var-usage/filename]]
-    (d/db (_analyzer-conn @state-ref)))
+    (d/db conn))
 
+  ;; Var usage missing name row & rol:
   (d/q '[:find  [(pull ?v [*]) ...]
          :where
          [?v :var-usage/filename]
          [(missing? $ ?v :var-usage/name-row)]]
-    (d/db (_analyzer-conn @state-ref)))
+    (d/db conn))
+
+  ;; Every local:
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :local/filename]]
+    (d/db conn))
+
+  ;; Every local usage:
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :local-usage/filename]]
+    (d/db conn))
+
+  ;; Local usage missing name row & rol:
+  (d/q '[:find  [(pull ?v [*]) ...]
+         :where
+         [?v :local-usage/filename]
+         [(missing? $ ?v :local-usage/name-row)]]
+    (d/db conn))
 
 
   (d/q '[:find  [(pull ?f [*]) ...]

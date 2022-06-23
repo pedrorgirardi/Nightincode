@@ -79,7 +79,11 @@
 
 (defn local-data
   [m]
-  (semthetic "local" m))
+  (merge (semthetic "local" m)
+    {:semthetic/locs
+     [{:loc/row (:row m)
+       :loc/col  (:col m)
+       :loc/col-end (:end-col m)}]}))
 
 (defn local-usage-data
   [m]
@@ -126,6 +130,9 @@
 
                                       (= semantic :locals)
                                       (map local-data)
+
+                                      (= semantic :local-usages)
+                                      (map local-usage-data)
 
                                       (= semantic :keywords)
                                       (map keyword-data))]
@@ -202,34 +209,6 @@
   (def conn (d/create-conn schema))
 
   (def tx-report (d/transact! conn prepared))
-
-  ;; Every Namespace:
-  (d/q '[:find  [(pull ?v [:namespace/name]) ...]
-         :where
-         [?v :namespace/filename]]
-    (d/db conn))
-
-  ;; Every Namespace usage:
-  (d/q '[:find  [(pull ?v [:namespace-usage/to :namespace-usage/lang]) ...]
-         :where
-         [?v :namespace-usage/filename]]
-    (d/db conn))
-
-  ;; Every Var:
-  (d/q '[:find  [(pull ?v [:var/ns :var/name]) ...]
-         :where
-         [?v :var/filename]]
-    (d/db conn))
-
-  ;; Every Var usage:
-  (d/q '[:find  [(pull ?v [:var-usage/from :var-usage/to :var-usage/name]) ...]
-         :where
-         [?v :var-usage/filename]]
-    (d/db conn))
-
-
-
-
 
   (d/transact! conn
     [{:file/path "a.clj"
