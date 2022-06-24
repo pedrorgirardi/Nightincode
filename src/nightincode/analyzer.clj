@@ -244,7 +244,7 @@
            :file/semthetics forms})))
     index))
 
-(defn ?semthetic_ [db {:keys [filename row col col-end]}]
+(defn ?cursor-semthetic [db {:keys [filename row col col-end]}]
   (d/q '[:find  (pull ?e [*]) .
          :in $ ?filename ?row ?col ?col-end
          :where

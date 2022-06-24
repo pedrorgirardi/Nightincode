@@ -684,11 +684,11 @@
 
           db (d/db (_analyzer-conn @state-ref))
 
-          semthetic (analyzer/?semthetic_ db
-                      {:filename (text-document-path textDocument)
-                       :row (inc cursor-line)
-                       :col (inc cursor-character)
-                       :col-end (inc cursor-character)})
+          cursor-semthetic (analyzer/?cursor-semthetic db
+                             {:filename (text-document-path textDocument)
+                              :row (inc cursor-line)
+                              :col (inc cursor-character)
+                              :col-end (inc cursor-character)})
 
           locations (mapcat
                       (fn [{:semthetic/keys [filename locs]}]
@@ -696,7 +696,7 @@
                           (fn [loc]
                             (analyzer/loc-location filename loc))
                           locs))
-                      (analyzer/?definitions db semthetic))]
+                      (analyzer/?definitions db cursor-semthetic))]
 
       (lsp/response request (seq locations)))
 
@@ -721,11 +721,11 @@
 
           db (d/db (_analyzer-conn @state-ref))
 
-          semthetic (analyzer/?semthetic_ db
-                      {:filename (text-document-path textDocument)
-                       :row (inc cursor-line)
-                       :col (inc cursor-character)
-                       :col-end (inc cursor-character)})
+          cursor-semthetic (analyzer/?cursor-semthetic db
+                             {:filename (text-document-path textDocument)
+                              :row (inc cursor-line)
+                              :col (inc cursor-character)
+                              :col-end (inc cursor-character)})
 
           locations (mapcat
                       (fn [{:semthetic/keys [filename locs]}]
@@ -733,7 +733,7 @@
                           (fn [loc]
                             (analyzer/loc-location filename loc))
                           locs))
-                      (analyzer/?usages db semthetic))]
+                      (analyzer/?usages db cursor-semthetic))]
 
       (lsp/response request (seq locations)))
 
@@ -892,7 +892,7 @@
 
           db (d/db (_analyzer-conn @state-ref))
 
-          cursor-semthetic (analyzer/?semthetic_ db
+          cursor-semthetic (analyzer/?cursor-semthetic db
                              {:filename (text-document-path textDocument)
                               :row (inc cursor-line)
                               :col (inc cursor-character)
@@ -1117,13 +1117,13 @@
          [?locs :loc/row 183]]
     (d/db conn))
 
-  (analyzer/?semthetic_ (d/db conn)
+  (analyzer/?cursor-semthetic (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
      :row 216
      :col 15
      :col-end 15})
 
-  (analyzer/?semthetic_ (d/db conn)
+  (analyzer/?cursor-semthetic (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/server.clj"
      :row 1032
      :col 26
@@ -1143,7 +1143,7 @@
          ]
     (d/db conn) :var 'nightincode.analyzer/?semthetic_)
 
-  (analyzer/?semthetic_ (d/db conn)
+  (analyzer/?cursor-semthetic (d/db conn)
     {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
      :row 183
      :col 31
