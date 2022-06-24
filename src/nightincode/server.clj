@@ -758,6 +758,42 @@
         {:code -32803
          :message (format "Sorry. Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
 
+(defn semthetic-label [{:semthetic/keys [semantic modifier] :as semthetic}]
+  (let [modifier+semantic [modifier semantic]]
+    (cond
+      (= modifier+semantic [:namespace :def])
+      (name (:namespace/name semthetic))
+
+      (= modifier+semantic [:namespace :usage])
+      (name (:namespace-usage/name semthetic))
+
+      (= modifier+semantic [:var :def])
+      (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+
+      (= modifier+semantic [:var :usage])
+      (when-let [to (:var-usage/to semthetic)]
+        (symbol (name to) (name (:var-usage/name semthetic))))
+
+      (= modifier+semantic [:local :def])
+      (name (:local/name semthetic))
+
+      (= modifier+semantic [:local :usage])
+      (name (:local-usage/name semthetic))
+
+      (= modifier+semantic [:keyword :usage])
+      (name (:keyword/name semthetic)))))
+
+(defn semthetic-kind [{:semthetic/keys [modifier]}]
+  (case modifier
+    :namespace
+    3
+
+    :var
+    13
+
+    ;; Default
+    13))
+
 (defmethod lsp/handle "workspace/symbol" [request]
 
   ;; The workspace symbol request is sent from the client to the server to list project-wide symbols matching the query string.
@@ -773,20 +809,12 @@
                         db)
 
           symbols (mapcat
-                    (fn [{:semthetic/keys [label modifier filename locs]}]
+                    (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
                       (map
                         (fn [loc]
-                          {:name (or label "-")
-                           :location (analyzer/loc-location filename loc)
-                           :kind (case modifier
-                                   :namespace
-                                   3
-
-                                   :var
-                                   13
-
-                                   ;; Default
-                                   13)})
+                          {:name (or (semthetic-label semthetic) "-")
+                           :kind (semthetic-kind semthetic)
+                           :location (analyzer/loc-location filename loc)})
                         locs))
                     definitions)]
 

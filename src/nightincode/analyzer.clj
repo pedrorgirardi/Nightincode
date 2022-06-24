@@ -70,7 +70,6 @@
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
      :semthetic/modifier :namespace
-     :semthetic/label (name (:name m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -82,7 +81,6 @@
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
      :semthetic/modifier :namespace
-     :semthetic/label (name (:to m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -100,7 +98,6 @@
       {:semthetic/semantic :def
        :semthetic/modifier :var
        :semthetic/identifier sym
-       :semthetic/label (str sym)
        :semthetic/filename (:filename m)
        :semthetic/locs
        [{:loc/row (:name-row m)
@@ -114,7 +111,6 @@
       {:semthetic/semantic :usage
        :semthetic/modifier :var
        :semthetic/identifier sym
-       :semthetic/label (str sym)
        :semthetic/filename (:filename m)
        :semthetic/locs
        [{:loc/row (or (:name-row m) (:row m))
@@ -127,7 +123,6 @@
     {:semthetic/semantic :def
      :semthetic/modifier :local
      :semthetic/identifier (:id m)
-     :semthetic/label (name (:name m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
@@ -152,7 +147,6 @@
     {:semthetic/semantic :usage
      :semthetic/modifier :keyword
      :semthetic/filename (:filename m)
-     :semthetic/label (:name m)
      :semthetic/identifier
      (if-let [ns (:ns m)]
        (keyword (name ns) (:name m))

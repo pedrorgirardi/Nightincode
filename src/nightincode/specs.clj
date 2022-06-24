@@ -24,8 +24,6 @@
     :number number?
     :string string?))
 
-(s/def :semthetic/label string?)
-
 (s/def :semthetic/filename string?)
 
 (s/def :semthetic/locs
@@ -37,5 +35,4 @@
           :semthetic/modifier
           :semthetic/locs
           :semthetic/filename]
-    :opt [:semthetic/identifier
-          :semthetic/label]))
+    :opt [:semthetic/identifier]))
