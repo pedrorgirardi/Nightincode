@@ -40,16 +40,16 @@
    :output
    {:canonical-paths true}})
 
-(defn semthetic [ns m]
-  (into {}
-    (comp
-      (remove
-        (fn [[_ v]]
-          (nil? v)))
-      (map
-        (fn [[k v]]
-          [(keyword ns (name k)) v])))
-    m))
+(defn cursor-loc
+  "Returns a loc in `locs` for `position`."
+  [locs position]
+  (reduce
+   (fn [_ {:loc/keys [row col col-end] :as loc}]
+     (when (and (= row (inc (:line position)))
+                (<= col (inc (:character position)) col-end))
+       (reduced loc)))
+   nil
+   locs))
 
 (defn loc-range
   "Returns a LSP Range.
@@ -74,6 +74,17 @@
   {:uri (->  (io/file filename) .toPath .toUri .toString)
    :range (loc-range loc)})
 
+(defn semthetic [ns m]
+  (into {}
+    (comp
+      (remove
+        (fn [[_ v]]
+          (nil? v)))
+      (map
+        (fn [[k v]]
+          [(keyword ns (name k)) v])))
+    m))
+
 (defn namespace-data
   [m]
   (merge (semthetic "namespace" m)
@@ -83,7 +94,9 @@
      :semthetic/locs
      [{:loc/row (:name-row m)
        :loc/col  (:name-col m)
-       :loc/col-end  (:name-end-col m)}]}))
+       :loc/col-end  (:name-end-col m)}]}
+    (when-let [doc (:doc m)]
+       {:semthetic/doc doc})))
 
 (defn namespace-usage-data
   [m]
@@ -111,7 +124,9 @@
        :semthetic/locs
        [{:loc/row (:name-row m)
          :loc/col  (:name-col m)
-         :loc/col-end  (:name-end-col m)}]})))
+         :loc/col-end  (:name-end-col m)}]}
+      (when-let [doc (:doc m)]
+       {:semthetic/doc doc}))))
 
 (defn var-usage-data
   [m]

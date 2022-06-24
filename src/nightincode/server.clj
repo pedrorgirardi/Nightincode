@@ -513,6 +513,7 @@
       :referencesProvider true
       :completionProvider {:triggerCharacters ["(" ":"]}
       :documentSymbolProvider true
+      :hoverProvider true
       :workspaceSymbolProvider true}
 
      :serverInfo
@@ -870,8 +871,53 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find document symbols. (%s)\n"
-                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+         :message
+         (format "Sorry. Nightincode failed to find document symbols. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
+
+
+(defmethod lsp/handle "textDocument/hover" [request]
+
+  ;; The hover request is sent from the client to the server to request hover information at a given text document position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
+
+  (try
+    (let [textDocument (get-in request [:params :textDocument])
+
+          cursor-position (get-in request [:params :position])
+
+          {cursor-line :line
+           cursor-character :character} cursor-position
+
+          db (d/db (_analyzer-conn @state-ref))
+
+          semthetic (analyzer/?semthetic_ db
+                      {:filename (text-document-path textDocument)
+                       :row (inc cursor-line)
+                       :col (inc cursor-character)
+                       :col-end (inc cursor-character)})]
+
+      (lsp/response request
+        (when semthetic
+          (let [{:semthetic/keys [locs]} semthetic
+
+                loc (analyzer/cursor-loc locs cursor-position)
+
+                range (analyzer/loc-range loc)]
+
+            {:range range
+             :contents
+             {:kind "markdown"
+              :value (or (:semthetic/doc semthetic) "")}}))))
+
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message
+         (format "Sorry. Nightincode failed to find hover information. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
+
 
 (defmethod lsp/handle "workspace/symbol" [request]
 
