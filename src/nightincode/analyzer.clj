@@ -70,7 +70,7 @@
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
      :semthetic/modifier :namespace
-     :semthetic/label (:name m)
+     :semthetic/label (name (:name m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -82,7 +82,7 @@
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
      :semthetic/modifier :namespace
-     :semthetic/label (:to m)
+     :semthetic/label (name (:to m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
