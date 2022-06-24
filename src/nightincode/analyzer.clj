@@ -51,7 +51,14 @@
           [(keyword ns (name k)) v])))
     m))
 
-(defn loc-range [{:loc/keys [row col col-end]}]
+(defn loc-range
+  "Returns a LSP Range.
+
+   A range in a text document expressed as (zero-based) start and end positions. 
+   A range is comparable to a selection in an editor. Therefore the end position is exclusive.
+
+   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range"
+  [{:loc/keys [row col col-end]}]
   {:start
    {:line (dec row)
     :character (dec col)}
