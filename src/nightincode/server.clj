@@ -687,11 +687,22 @@
         ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
         text-document-text (get-in notification [:params :contentChanges 0 :text])
 
-        result (analyze-text {:uri text-document-uri
-                              :text text-document-text})]
+        {:keys [analysis]} (analyze-text {:uri text-document-uri
+                                          :text text-document-text})
 
-    (swap! state-ref !index-document {:uri text-document-uri
-                                      :analysis (:analysis result)})))
+        index (analyzer/index analysis)
+
+        tx-data (into []
+                  (map
+                    (fn [[filename _]]
+                      [:db/retractEntity [:file/path filename]]))
+                  index)
+
+        tx-data (into tx-data (analyzer/prepare-transaction index))
+
+        conn (_analyzer-conn @state-ref)]
+
+    (d/transact! conn tx-data)))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 

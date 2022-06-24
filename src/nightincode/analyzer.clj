@@ -200,48 +200,48 @@
   (into []
     (map
       (fn [[filename analysis]]
-        (let [forms (reduce-kv
-                      (fn [tx-data semantic items]
-                        (let [xform (cond
-                                      (= semantic :namespace-definitions)
-                                      (map namespace-data)
+        (let [semthetics (reduce-kv
+                           (fn [tx-data semantic items]
+                             (let [xform (cond
+                                           (= semantic :namespace-definitions)
+                                           (map namespace-data)
 
-                                      (= semantic :namespace-usages)
-                                      (map namespace-usage-data)
+                                           (= semantic :namespace-usages)
+                                           (map namespace-usage-data)
 
-                                      (= semantic :var-definitions)
-                                      (map var-data)
+                                           (= semantic :var-definitions)
+                                           (map var-data)
 
-                                      (= semantic :var-usages)
-                                      (map var-usage-data)
+                                           (= semantic :var-usages)
+                                           (map var-usage-data)
 
-                                      (= semantic :locals)
-                                      (map local-data)
+                                           (= semantic :locals)
+                                           (map local-data)
 
-                                      (= semantic :local-usages)
-                                      (map local-usage-data)
+                                           (= semantic :local-usages)
+                                           (map local-usage-data)
 
-                                      (= semantic :keywords)
-                                      (map keyword-data))]
-                          (if xform
-                            (into tx-data
-                              (comp
-                                xform
-                                (filter
-                                  (fn [semthetic]
-                                    (or (s/valid? :semthetic/semthetic semthetic)
-                                      (log/warn
-                                        (str "Invalid Semthetic:"
-                                          "\n"
-                                          (with-out-str (pprint/pprint semthetic))
-                                          "\nExplain:\n"
-                                          (s/explain-str :semthetic/semthetic semthetic)))))))
-                              items)
-                            tx-data)))
-                      []
-                      analysis)]
+                                           (= semantic :keywords)
+                                           (map keyword-data))]
+                               (if xform
+                                 (into tx-data
+                                   (comp
+                                     xform
+                                     (filter
+                                       (fn [semthetic]
+                                         (or (s/valid? :semthetic/semthetic semthetic)
+                                           (log/warn
+                                             (str "Invalid Semthetic:"
+                                               "\n"
+                                               (with-out-str (pprint/pprint semthetic))
+                                               "\nExplain:\n"
+                                               (s/explain-str :semthetic/semthetic semthetic)))))))
+                                   items)
+                                 tx-data)))
+                           []
+                           analysis)]
           {:file/path filename
-           :file/semthetics forms})))
+           :file/semthetics semthetics})))
     index))
 
 (defn ?cursor-semthetic
