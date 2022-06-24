@@ -127,7 +127,7 @@
     {:semthetic/semantic :def
      :semthetic/modifier :local
      :semthetic/identifier (:id m)
-     :semthetic/label (:name m)
+     :semthetic/label (name (:name m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:row m)
@@ -140,7 +140,7 @@
     {:semthetic/semantic :usage
      :semthetic/modifier :local
      :semthetic/identifier (:id m)
-     :semthetic/label (:name m)
+     :semthetic/label (name (:name m))
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (or (:name-row m) (:row m))
