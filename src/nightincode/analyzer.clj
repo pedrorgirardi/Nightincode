@@ -90,13 +90,11 @@
        :loc/col-end  (:name-end-col m)}]}))
 
 (defn var-data
-  "Var data defined to be persisted in the database."
+  "Var data defined to be persisted in the database.
+
+  Name row & col encode the location of the symbol.
+  Row & col, without name, encode the form location."
   [m]
-
-  ;; Note:
-  ;; Name row & col encode the location of the symbol.
-  ;; Row & col, without name, encode the form location.
-
   (let [sym (symbol (name (:ns m)) (name (:name m)))]
     (merge (semthetic "var" m)
       {:semthetic/semantic :def
