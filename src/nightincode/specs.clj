@@ -18,7 +18,11 @@
   #{:namespace :var :local :keyword})
 
 (s/def :semthetic/identifier
-  (s/or :symbol symbol? :number number? :string string?))
+  (s/or
+    :symbol symbol?
+    :keyword keyword?
+    :number number?
+    :string string?))
 
 (s/def :semthetic/label string?)
 
