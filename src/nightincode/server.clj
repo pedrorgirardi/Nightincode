@@ -56,6 +56,42 @@
 (defn filepath-uri ^URI [filepath]
   (->  (io/file filepath) .toPath .toUri))
 
+(defn semthetic-label [{:semthetic/keys [semantic modifier] :as semthetic}]
+  (let [modifier+semantic [modifier semantic]]
+    (cond
+      (= modifier+semantic [:namespace :def])
+      (name (:namespace/name semthetic))
+
+      (= modifier+semantic [:namespace :usage])
+      (name (:namespace-usage/name semthetic))
+
+      (= modifier+semantic [:var :def])
+      (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+
+      (= modifier+semantic [:var :usage])
+      (when-let [to (:var-usage/to semthetic)]
+        (symbol (name to) (name (:var-usage/name semthetic))))
+
+      (= modifier+semantic [:local :def])
+      (name (:local/name semthetic))
+
+      (= modifier+semantic [:local :usage])
+      (name (:local-usage/name semthetic))
+
+      (= modifier+semantic [:keyword :usage])
+      (name (:keyword/name semthetic)))))
+
+(defn semthetic-kind [{:semthetic/keys [modifier]}]
+  (case modifier
+    :namespace
+    3
+
+    :var
+    13
+
+    ;; Default
+    13))
+
 (defn clojuredocs
   "ClojureDocs.org database."
   []
@@ -448,6 +484,7 @@
       :definitionProvider true
       :referencesProvider true
       :completionProvider {:triggerCharacters ["(" ":"]}
+      :documentSymbolProvider true
       :workspaceSymbolProvider true}
 
      :serverInfo
@@ -758,41 +795,40 @@
         {:code -32803
          :message (format "Sorry. Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
 
-(defn semthetic-label [{:semthetic/keys [semantic modifier] :as semthetic}]
-  (let [modifier+semantic [modifier semantic]]
-    (cond
-      (= modifier+semantic [:namespace :def])
-      (name (:namespace/name semthetic))
+(defmethod lsp/handle "textDocument/documentSymbol" [request]
 
-      (= modifier+semantic [:namespace :usage])
-      (name (:namespace-usage/name semthetic))
+  ;; The document symbol request is sent from the client to the server.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
 
-      (= modifier+semantic [:var :def])
-      (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+  (try
+    (let [db (d/db (_analyzer-conn @state-ref))
 
-      (= modifier+semantic [:var :usage])
-      (when-let [to (:var-usage/to semthetic)]
-        (symbol (name to) (name (:var-usage/name semthetic))))
+          definitions (d/q '[:find [(pull ?e [*]) ...]
+                             :where
+                             [?e :semthetic/semantic :def]
+                             (or
+                               [?e :semthetic/modifier :namespace]
+                               [?e :semthetic/modifier :var])]
+                        db)
 
-      (= modifier+semantic [:local :def])
-      (name (:local/name semthetic))
+          symbols (mapcat
+                    (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
+                      (map
+                        (fn [loc]
+                          {:name (or (semthetic-label semthetic) "?")
+                           :kind (semthetic-kind semthetic)
+                           :location (analyzer/loc-location filename loc)})
+                        locs))
+                    definitions)]
 
-      (= modifier+semantic [:local :usage])
-      (name (:local-usage/name semthetic))
+      (lsp/response request nil))
 
-      (= modifier+semantic [:keyword :usage])
-      (name (:keyword/name semthetic)))))
-
-(defn semthetic-kind [{:semthetic/keys [modifier]}]
-  (case modifier
-    :namespace
-    3
-
-    :var
-    13
-
-    ;; Default
-    13))
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message (format "Sorry. Nightincode failed to find document symbols. (%s)\n"
+                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "workspace/symbol" [request]
 
