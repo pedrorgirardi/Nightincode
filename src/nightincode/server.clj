@@ -75,7 +75,7 @@
       (= modifier+semantic [:var :def])
       (let [markdown (format "%s/**%s**" (:var/ns semthetic) (:var/name semthetic))
             markdown (if-let [args (:var/arglist-strs semthetic)]
-                       (str markdown " `" (str/join " " args) "`")
+                       (format "%s\n```clojure\n%s\n```" markdown (str/join "\n" args))
                        markdown)
             markdown (if doc
                        (str markdown "\n\n" doc)
