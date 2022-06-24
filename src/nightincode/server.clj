@@ -892,24 +892,31 @@
 
           db (d/db (_analyzer-conn @state-ref))
 
-          semthetic (analyzer/?semthetic_ db
-                      {:filename (text-document-path textDocument)
-                       :row (inc cursor-line)
-                       :col (inc cursor-character)
-                       :col-end (inc cursor-character)})]
+          cursor-semthetic (analyzer/?semthetic_ db
+                             {:filename (text-document-path textDocument)
+                              :row (inc cursor-line)
+                              :col (inc cursor-character)
+                              :col-end (inc cursor-character)})
+
+          cursor-definitions (analyzer/?definitions db cursor-semthetic)]
 
       (lsp/response request
-        (when semthetic
-          (let [{:semthetic/keys [locs]} semthetic
+        (when (seq cursor-definitions)
+          (let [loc (analyzer/cursor-loc cursor-semthetic cursor-position)
 
-                loc (analyzer/cursor-loc locs cursor-position)
+                range (analyzer/loc-range loc)
 
-                range (analyzer/loc-range loc)]
+                values (map
+                         (fn [{:semthetic/keys [doc]}]
+                           doc)
+                         cursor-definitions)
+
+                markdown (str/join "\n\n" values)]
 
             {:range range
              :contents
              {:kind "markdown"
-              :value (or (:semthetic/doc semthetic) "")}}))))
+              :value (or markdown "")}}))))
 
     (catch Exception ex
       (lsp/error-response request

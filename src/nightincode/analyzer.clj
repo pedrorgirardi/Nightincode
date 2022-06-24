@@ -42,14 +42,14 @@
 
 (defn cursor-loc
   "Returns a loc in `locs` for `position`."
-  [locs position]
+  [cursor-semthetic position]
   (reduce
    (fn [_ {:loc/keys [row col col-end] :as loc}]
      (when (and (= row (inc (:line position)))
                 (<= col (inc (:character position)) col-end))
        (reduced loc)))
    nil
-   locs))
+   (:semthetic/locs cursor-semthetic)))
 
 (defn loc-range
   "Returns a LSP Range.
