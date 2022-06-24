@@ -419,9 +419,20 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#serverCapabilities
 
-  (swap! state-ref assoc
-    :LSP/InitializeParams (:params request)
-    :nightincode/analyzer {:conn (d/create-conn analyzer/schema)})
+  (let [conn (d/create-conn analyzer/schema)]
+
+    (when-let [paths (analyzer-paths (get-in request [:params :rootPath]))]
+      (let [{:keys [analysis]} (analyze {:lint paths})
+
+            index (analyzer/index analysis)
+
+            tx-data (analyzer/prepare-transaction index)]
+
+        (d/transact! conn tx-data)))
+
+    (swap! state-ref assoc
+      :LSP/InitializeParams (:params request)
+      :nightincode/analyzer {:conn conn}))
 
   (lsp/response request
     {:capabilities
@@ -503,17 +514,7 @@
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params {:type 4
-                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})
-
-
-    (when-let [lint (analyzer-paths (_root-path @state-ref))]
-      (let [{:keys [analysis]} (analyze {:lint lint})
-
-            index (analyzer/index analysis)
-
-            tx-data (analyzer/prepare-transaction index)]
-
-        (d/transact! (_analyzer-conn @state-ref) tx-data)))))
+                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
 
 (defmethod lsp/handle "shutdown" [request]
 
