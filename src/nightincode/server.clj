@@ -805,14 +805,17 @@
 
           definitions (d/q '[:find [(pull ?e [*]) ...]
                              :where
-                             [?e :semthetic/semantic :def]]
+                             [?e :semthetic/semantic :def]
+                             (or
+                               [?e :semthetic/modifier :namespace]
+                               [?e :semthetic/modifier :var])]
                         db)
 
           symbols (mapcat
                     (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
                       (map
                         (fn [loc]
-                          {:name (or (semthetic-label semthetic) "-")
+                          {:name (or (semthetic-label semthetic) "?")
                            :kind (semthetic-kind semthetic)
                            :location (analyzer/loc-location filename loc)})
                         locs))
