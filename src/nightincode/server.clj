@@ -129,14 +129,24 @@
        (= modifier+semantic [:keyword :usage])
        (name (:keyword/name semthetic))))))
 
-(defn semthetic-kind [{:semthetic/keys [modifier]}]
+(defn semthetic-symbol-kind
+  "Mapping of a Semthetic to a Symbol Kind.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#symbolKind"
+  [{:semthetic/keys [modifier]}]
   (case modifier
     :namespace
     3
 
     8))
 
-(defn semthetic-symbol-range [{:semthetic/keys [semantic modifier] :as semthetic}]
+(defn semthetic-symbol-range
+  "Mapping of a Semthetic to a Range.
+
+  Range encodes the location of a Semthetic symbol.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range"
+  [{:semthetic/keys [semantic modifier] :as semthetic}]
   (let [modifier+semantic [modifier semantic]]
     (cond
       (= modifier+semantic [:namespace :def])
@@ -887,7 +897,7 @@
                         (fn [loc]
                           {:name (or (semthetic-label semthetic {:show-var-namespace? false}) "?")
 
-                           :kind (semthetic-kind semthetic)
+                           :kind (semthetic-symbol-kind semthetic)
 
                            ;; The range enclosing this symbol not including leading/trailing whitespace
                            ;; but everything else like comments. This information is typically used to
@@ -980,7 +990,7 @@
                       (map
                         (fn [loc]
                           {:name (or (semthetic-label semthetic) "?")
-                           :kind (semthetic-kind semthetic)
+                           :kind (semthetic-symbol-kind semthetic)
                            :location (analyzer/loc-location filename loc)})
                         locs))
                     definitions)]
