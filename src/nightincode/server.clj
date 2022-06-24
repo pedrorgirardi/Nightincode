@@ -56,30 +56,39 @@
 (defn filepath-uri ^URI [filepath]
   (->  (io/file filepath) .toPath .toUri))
 
-(defn semthetic-label [{:semthetic/keys [semantic modifier] :as semthetic}]
-  (let [modifier+semantic [modifier semantic]]
-    (cond
-      (= modifier+semantic [:namespace :def])
-      (name (:namespace/name semthetic))
+(defn semthetic-label
+  ([semthetic]
+   (semthetic-label semthetic {:show-var-namespace? true}))
+  ([semthetic options]
+   (let [{:semthetic/keys [semantic modifier]} semthetic
 
-      (= modifier+semantic [:namespace :usage])
-      (name (:namespace-usage/name semthetic))
+         {:keys [show-var-namespace?]} options
 
-      (= modifier+semantic [:var :def])
-      (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+         modifier+semantic [modifier semantic]]
+     (cond
+       (= modifier+semantic [:namespace :def])
+       (name (:namespace/name semthetic))
 
-      (= modifier+semantic [:var :usage])
-      (when-let [to (:var-usage/to semthetic)]
-        (symbol (name to) (name (:var-usage/name semthetic))))
+       (= modifier+semantic [:namespace :usage])
+       (name (:namespace-usage/name semthetic))
 
-      (= modifier+semantic [:local :def])
-      (name (:local/name semthetic))
+       (= modifier+semantic [:var :def])
+       (if show-var-namespace?
+         (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+         (name (:var/name semthetic)))
 
-      (= modifier+semantic [:local :usage])
-      (name (:local-usage/name semthetic))
+       (= modifier+semantic [:var :usage])
+       (when-let [to (:var-usage/to semthetic)]
+         (symbol (name to) (name (:var-usage/name semthetic))))
 
-      (= modifier+semantic [:keyword :usage])
-      (name (:keyword/name semthetic)))))
+       (= modifier+semantic [:local :def])
+       (name (:local/name semthetic))
+
+       (= modifier+semantic [:local :usage])
+       (name (:local-usage/name semthetic))
+
+       (= modifier+semantic [:keyword :usage])
+       (name (:keyword/name semthetic))))))
 
 (defn semthetic-kind [{:semthetic/keys [modifier]}]
   (case modifier
@@ -825,6 +834,7 @@
 
           db (d/db (_analyzer-conn @state-ref))
 
+          ;; Find namespace and var definitions in file.
           definitions (d/q '[:find [(pull ?e [*]) ...]
                              :in $ ?filename
                              :where
@@ -839,7 +849,7 @@
                     (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
                       (map
                         (fn [loc]
-                          {:name (or (semthetic-label semthetic) "?")
+                          {:name (or (semthetic-label semthetic {:show-var-namespace? false}) "?")
 
                            :kind (semthetic-kind semthetic)
 
