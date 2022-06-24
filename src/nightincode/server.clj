@@ -556,6 +556,7 @@
       :textDocumentSync 1
       :definitionProvider true
       :referencesProvider true
+      :documentHighlightProvider true
       :completionProvider {:triggerCharacters ["(" ":"]}
       :documentSymbolProvider true
       :hoverProvider true
@@ -649,6 +650,9 @@
   (System/exit (if (:nightincode/shutdown? @state-ref)
                  0
                  1)))
+
+(defmethod lsp/handle "$/cancelRequest" [_]
+  nil)
 
 (defmethod lsp/handle "textDocument/didOpen" [notification]
 
@@ -748,7 +752,7 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find definitions. (%s)\n"
+         :message (format "Nightincode failed to find definitions. (%s)\n"
                     (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/references" [request]
@@ -785,7 +789,55 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find references. (%s)\n"
+         :message (format "Nightincode failed to find references. (%s)\n"
+                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+
+(defmethod lsp/handle "textDocument/documentHighlight" [request]
+
+  ;; The document highlight request is sent from the client to the server
+  ;; to resolve a document highlights for a given text document position.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
+
+  (try
+    (let [textDocument (get-in request [:params :textDocument])
+
+          cursor-line (get-in request [:params :position :line])
+          cursor-character (get-in request [:params :position :character])
+
+          db (d/db (_analyzer-conn @state-ref))
+
+          cursor-semthetic (analyzer/?cursor-semthetic db
+                             {:filename (text-document-path textDocument)
+                              :row (inc cursor-line)
+                              :col (inc cursor-character)
+                              :col-end (inc cursor-character)})
+
+          definitions-highlights (mapcat
+                                   (fn [{:semthetic/keys [locs]}]
+                                     (map
+                                       (fn [loc]
+                                         {:range (analyzer/loc-range loc)})
+                                       locs))
+                                   (analyzer/?file-definitions db cursor-semthetic))
+
+          usages-highlights (mapcat
+                              (fn [{:semthetic/keys [locs]}]
+                                (map
+                                  (fn [loc]
+                                    {:range (analyzer/loc-range loc)})
+                                  locs))
+                              (analyzer/?file-usages db cursor-semthetic))
+
+          highlights (reduce into [] [definitions-highlights
+                                      usages-highlights])]
+
+      (lsp/response request (seq highlights)))
+
+    (catch Exception ex
+      (lsp/error-response request
+        {:code -32803
+         :message (format "Nightincode failed to find highlights. (%s)\n"
                     (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
@@ -867,7 +919,7 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
+         :message (format "Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
 
 (defmethod lsp/handle "textDocument/documentSymbol" [request]
 
@@ -917,7 +969,7 @@
       (lsp/error-response request
         {:code -32803
          :message
-         (format "Sorry. Nightincode failed to find document symbols. (%s)\n"
+         (format "Nightincode failed to find document symbols. (%s)\n"
            (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 
@@ -964,7 +1016,7 @@
       (lsp/error-response request
         {:code -32803
          :message
-         (format "Sorry. Nightincode failed to find hover information. (%s)\n"
+         (format "Nightincode failed to find hover information. (%s)\n"
            (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 
@@ -1000,7 +1052,7 @@
     (catch Exception ex
       (lsp/error-response request
         {:code -32803
-         :message (format "Sorry. Nightincode failed to find workspace symbols. (%s)\n"
+         :message (format "Nightincode failed to find workspace symbols. (%s)\n"
                     (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defn start [config]

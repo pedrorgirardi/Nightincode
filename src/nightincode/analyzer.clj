@@ -268,6 +268,16 @@
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
 
+(defn ?file-definitions [db semthetic]
+  (d/q '[:find [(pull ?e [*]) ...]
+         :in $ ?filename ?qualifier ?identifier
+         :where
+         [?e :semthetic/filename ?filename]
+         [?e :semthetic/semantic :def]
+         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/identifier ?identifier]]
+    db (:semthetic/filename semthetic) (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+
 (defn ?usages [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
          :in $ ?qualifier ?identifier
@@ -276,6 +286,16 @@
          [?e :semthetic/modifier ?qualifier]
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+
+(defn ?file-usages [db semthetic]
+  (d/q '[:find [(pull ?e [*]) ...]
+         :in $ ?filename ?qualifier ?identifier
+         :where
+         [?e :semthetic/filename ?filename]
+         [?e :semthetic/semantic :usage]
+         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/identifier ?identifier]]
+    db (:semthetic/filename semthetic) (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
 
 
 (comment
