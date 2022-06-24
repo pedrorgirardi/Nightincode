@@ -56,6 +56,45 @@
 (defn filepath-uri ^URI [filepath]
   (->  (io/file filepath) .toPath .toUri))
 
+(defn semthetic-markdown
+  [semthetic]
+  (let [{:semthetic/keys [semantic modifier doc]} semthetic
+
+        modifier+semantic [modifier semantic]]
+    (cond
+      (= modifier+semantic [:namespace :def])
+      (let [markdown (name (:namespace/name semthetic))
+            markdown (if doc
+                       (str markdown "\n\n" doc)
+                       markdown)]
+        markdown)
+
+      (= modifier+semantic [:namespace :usage])
+      (name (:namespace-usage/name semthetic))
+
+      (= modifier+semantic [:var :def])
+      (let [markdown (format "%s/**%s**" (:var/ns semthetic) (:var/name semthetic))
+            markdown (if-let [args (:var/arglist-strs semthetic)]
+                       (str markdown " `" (str/join " " args) "`")
+                       markdown)
+            markdown (if doc
+                       (str markdown "\n\n" doc)
+                       markdown)]
+        markdown)
+
+      (= modifier+semantic [:var :usage])
+      (when-let [to (:var-usage/to semthetic)]
+        (symbol (name to) (name (:var-usage/name semthetic))))
+
+      (= modifier+semantic [:local :def])
+      (name (:local/name semthetic))
+
+      (= modifier+semantic [:local :usage])
+      (name (:local-usage/name semthetic))
+
+      (= modifier+semantic [:keyword :usage])
+      (name (:keyword/name semthetic)))))
+
 (defn semthetic-label
   ([semthetic]
    (semthetic-label semthetic {:show-var-namespace? true}))
@@ -906,10 +945,7 @@
 
                 range (analyzer/loc-range loc)
 
-                values (map
-                         (fn [{:semthetic/keys [doc]}]
-                           doc)
-                         cursor-definitions)
+                values (map semthetic-markdown cursor-definitions)
 
                 markdown (str/join "\n\n" values)]
 
