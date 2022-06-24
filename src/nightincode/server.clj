@@ -92,6 +92,25 @@
     ;; Default
     13))
 
+(defn semthetic-symbol-range [{:semthetic/keys [semantic modifier] :as semthetic}]
+  (let [modifier+semantic [modifier semantic]]
+    (cond
+      (= modifier+semantic [:namespace :def])
+      {:start
+       {:line (dec (:namespace/name-row semthetic))
+        :character (dec (:namespace/name-col semthetic))}
+       :end
+       {:line (dec (:namespace/name-row semthetic))
+        :character (dec (:namespace/name-end-col semthetic))}}
+
+      (= modifier+semantic [:var :def])
+      {:start
+       {:line (dec (:var/name-row semthetic))
+        :character (dec (:var/name-col semthetic))}
+       :end
+       {:line (dec (:var/name-row semthetic))
+        :character (dec (:var/name-end-col semthetic))}})))
+
 (defn clojuredocs
   "ClojureDocs.org database."
   []
@@ -802,27 +821,41 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
 
   (try
-    (let [db (d/db (_analyzer-conn @state-ref))
+    (let [textDocument (get-in request [:params :textDocument])
+
+          db (d/db (_analyzer-conn @state-ref))
 
           definitions (d/q '[:find [(pull ?e [*]) ...]
+                             :in $ ?filename
                              :where
+                             [?e :semthetic/filename ?filename]
                              [?e :semthetic/semantic :def]
                              (or
                                [?e :semthetic/modifier :namespace]
                                [?e :semthetic/modifier :var])]
-                        db)
+                        db (text-document-path textDocument))
 
           symbols (mapcat
                     (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
                       (map
                         (fn [loc]
                           {:name (or (semthetic-label semthetic) "?")
+
                            :kind (semthetic-kind semthetic)
-                           :location (analyzer/loc-location filename loc)})
+
+                           ;; The range enclosing this symbol not including leading/trailing whitespace
+                           ;; but everything else like comments. This information is typically used to
+                           ;; determine if the clients cursor is inside the symbol to reveal in the
+                           ;; symbol in the UI.
+                           :range (semthetic-symbol-range semthetic)
+
+                           ;; The range that should be selected and revealed when this symbol is being
+                           ;; picked, e.g. the name of a function. Must be contained by the `range`.
+                           :selectionRange (analyzer/loc-range loc)})
                         locs))
                     definitions)]
 
-      (lsp/response request nil))
+      (lsp/response request (seq symbols)))
 
     (catch Exception ex
       (lsp/error-response request

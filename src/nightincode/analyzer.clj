@@ -51,19 +51,21 @@
           [(keyword ns (name k)) v])))
     m))
 
+(defn loc-range [{:loc/keys [row col col-end]}]
+  {:start
+   {:line (dec row)
+    :character (dec col)}
+   :end
+   {:line (dec row)
+    :character (dec col-end)}})
+
 (defn loc-location
   "Returns a LSP Location.
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#location"
-  [filename {:loc/keys [row col col-end]}]
+  [filename loc]
   {:uri (->  (io/file filename) .toPath .toUri .toString)
-   :range
-   {:start
-    {:line (dec row)
-     :character (dec col)}
-    :end
-    {:line (dec row)
-     :character (dec col-end)}}})
+   :range (loc-range loc)})
 
 (defn namespace-data
   [m]
