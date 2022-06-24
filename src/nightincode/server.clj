@@ -134,11 +134,7 @@
     :namespace
     3
 
-    :var
-    13
-
-    ;; Default
-    13))
+    8))
 
 (defn semthetic-symbol-range [{:semthetic/keys [semantic modifier] :as semthetic}]
   (let [modifier+semantic [modifier semantic]]
