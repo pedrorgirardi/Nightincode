@@ -7,3 +7,5 @@ Nightincode.sublime-workspace
 .cpcache
 server.jar
 LSP.jar
+.clj-kondo/
+.lsp/
