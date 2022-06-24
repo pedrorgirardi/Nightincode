@@ -692,6 +692,12 @@
 
         index (analyzer/index analysis)
 
+        ;; Note:
+        ;; Retract file entities before adding new ones.
+        ;; Old Semthetics are retracted because `:file/semthetics` is a component.
+        ;;
+        ;; TODO: Investigate if there's a better way to update - retract & add.
+        
         tx-data (into []
                   (map
                     (fn [[filename _]]
