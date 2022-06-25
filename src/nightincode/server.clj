@@ -168,41 +168,6 @@
        {:line (dec (:var/name-row semthetic))
         :character (dec (:var/name-end-col semthetic))}})))
 
-(defn clojuredocs
-  "ClojureDocs.org database."
-  []
-  (json/read (io/reader (io/resource "clojuredocs.json")) :key-fn keyword))
-
-(defn clojuredocs-completion []
-  (into []
-    (comp
-      (filter
-        (fn [m]
-          (= (:ns m) "clojure.core")))
-      (map
-        (fn [{var-ns :ns
-              var-name :name
-              var-args :arglists
-              var-doc :doc :as m}]
-          (let [completion-item-kind {"var" 6
-                                      "function" 3
-                                      "macro" 3}
-
-                arglists (str/join " " (map #(str "[" % "]") var-args))
-
-                detail (format "%s/%s %s" var-ns var-name arglists)
-                detail (if (str/blank? var-doc)
-                         detail
-                         (format "%s\n\n%s" detail var-doc))]
-
-            {:label var-name
-             :kind (completion-item-kind (:type m))
-             :detail detail}))))
-    (:vars (clojuredocs))))
-
-(def clojuredocs-completion-delay
-  (delay (clojuredocs-completion)))
-
 
 ;; ---------------------------------------------------------
 
