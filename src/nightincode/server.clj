@@ -8,11 +8,14 @@
    [clojure.tools.logging :as log]
    [clojure.java.shell :as shell]
    [clojure.stacktrace :as stacktrace]
+   [clojure.spec.alpha :as s]
+   [clojure.pprint :as pprint]
 
    [clj-kondo.core :as clj-kondo]
    [lspie.api :as lsp]
    [datascript.core :as d]
 
+   [nightincode.specs]
    [nightincode.analyzer :as analyzer])
 
   (:import
@@ -530,8 +533,8 @@
     {:line (dec row)
      :character (dec col)}
     :end
-    {:line (dec end-row)
-     :character (dec end-col)}}
+    {:line (dec (or end-row row))
+     :character (dec (or end-col col))}}
    :source "Nightincode"
    :message message
    :severity
@@ -542,6 +545,21 @@
      2
 
      3)})
+
+(defn diagnostics [findings]
+  (into []
+    (comp
+      (filter
+        (fn [finding]
+          (or (s/valid? :clj-kondo/finding finding)
+            (log/warn
+              (str "Invalid Finding:"
+                "\n"
+                (with-out-str (pprint/pprint finding))
+                "\nExplain:\n"
+                (s/explain-str :clj-kondo/finding finding))))))
+      (map diagnostic))
+    findings))
 
 (defn publish-diagnostics
   "Diagnostics notification are sent from the server to the client to signal results of validation runs.
@@ -705,15 +723,13 @@
         result (analyze-text {:uri text-document-uri
                               :text text-document-text})
 
-        {:keys [findings analysis]} result
-
-        diagnostics (map diagnostic findings)]
+        {:keys [findings analysis]} result]
 
     ;; Publish clj-kondo findings:
     ;; (Findings are encoded as LSP Diagnostics)
     (publish-diagnostics (_out @state-ref)
       {:uri text-document-uri
-       :diagnostics diagnostics})
+       :diagnostics (diagnostics findings)})
 
     (swap! state-ref !index-document {:uri text-document-uri
                                       :analysis analysis})))
@@ -734,8 +750,6 @@
 
         {:keys [analysis findings]} (analyze-text {:uri text-document-uri
                                                    :text text-document-text})
-
-        diagnostics (map diagnostic findings)
 
         index (analyzer/index analysis)
 
@@ -759,7 +773,7 @@
 
     (publish-diagnostics (_out @state-ref)
       {:uri text-document-uri
-       :diagnostics diagnostics})))
+       :diagnostics (diagnostics findings)})))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 
