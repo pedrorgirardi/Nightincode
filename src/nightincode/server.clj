@@ -233,255 +233,6 @@
             paths (get-in config [:analyzer :paths])]
         (map #(.getPath (io/file root-path %)) paths)))))
 
-(defn index-V
-  "Index Var definitions and usages by symbol and row."
-  [analysis]
-  (let [index {;; Definitions indexed by name.
-               :nightincode/IVD {}
-
-               ;; Definitions indexed by row.
-               :nightincode/IVD_ {}
-
-               ;; Usages indexed by name.
-               :nightincode/IVU {}
-
-               ;; Usages indexed by row.
-               :nightincode/IVU_ {}}
-
-        ;; -- Usage index
-
-        index (reduce
-                (fn [index usage]
-                  (let [{var-namespace :to
-                         var-name :name
-                         var-name-row :name-row} usage
-
-                        sym (symbol (str var-namespace) (str var-name))
-
-                        index (update-in index [:nightincode/IVU sym] (fnil conj #{}) usage)
-
-                        index (update-in index [:nightincode/IVU_ var-name-row] (fnil conj []) usage)]
-
-                    index))
-                index
-                (:var-usages analysis))
-
-
-        ;; -- Definition index
-
-        index (reduce
-                (fn [index definition]
-                  (let [{var-namespace :ns
-                         var-name :name
-                         var-name-row :name-row} definition
-
-                        sym (symbol (str var-namespace) (str var-name))
-
-                        index (update-in index [:nightincode/IVD sym] (fnil conj #{}) definition)
-
-                        index (update-in index [:nightincode/IVD_ var-name-row] (fnil conj []) definition)]
-
-                    index))
-                index
-                (:var-definitions analysis))]
-
-    index))
-
-(defn index-K
-  "Index keyword definitions (reg) and usages by keyword and row."
-  [analysis]
-  (let [index {;; Definitions indexed by keyword.
-               :nightincode/IKD {}
-
-               ;; Definitions indexed by row.
-               :nightincode/IKD_ {}
-
-               ;; Usages indexed by keyword.
-               :nightincode/IKU {}
-
-               ;; Usages indexed by row.
-               :nightincode/IKU_ {}}
-
-        index (reduce
-                (fn [index keyword-analysis]
-                  (let [{keyword-namespace :ns
-                         keyword-name :name
-                         keyword-row :row
-                         keyword-reg :reg} keyword-analysis
-
-                        k (if keyword-namespace
-                            (keyword (str keyword-namespace) keyword-name)
-                            (keyword keyword-name))]
-
-                    (cond
-                      keyword-reg
-                      (-> index
-                        (update-in [:nightincode/IKD k] (fnil conj #{}) keyword-analysis)
-                        (update-in [:nightincode/IKD_ keyword-row] (fnil conj []) keyword-analysis))
-
-                      :else
-                      (-> index
-                        (update-in [:nightincode/IKU k] (fnil conj #{}) keyword-analysis)
-                        (update-in [:nightincode/IKU_ keyword-row] (fnil conj []) keyword-analysis)))))
-                index
-                (:keywords analysis))]
-
-    index))
-
-
-;; -- Indexes
-
-(defn IVD
-  "Var definitions indexed by symbol."
-  [index]
-  (:nightincode/IVD index))
-
-(defn IVD_
-  "Var definitions indexed by row.
-
-  Note: row is not zero-based."
-  [index]
-  (:nightincode/IVD_ index))
-
-(defn IVU
-  "Var usages indexed by symbol."
-  [index]
-  (:nightincode/IVU index))
-
-(defn IVU_
-  "Var usages indexed by row.
-
-  Note: row is not zero-based."
-  [index]
-  (:nightincode/IVU_ index))
-
-(defn IKD
-  "Keyword definitions indexed by keyword."
-  [index]
-  (:nightincode/IKD index))
-
-(defn IKD_
-  "Keyword definitions indexed by row.
-
-  Note: row is not zero-based."
-  [index]
-  (:nightincode/IKD_ index))
-
-(defn IKU
-  "Keyword usages indexed by keyword."
-  [index]
-  (:nightincode/IKU index))
-
-(defn IKU_
-  "Keyword usages indexed by row.
-
-  Note: row is not zero-based."
-  [index]
-  (:nightincode/IKU_ index))
-
-
-;; -- Queries
-
-(defn ?VD_
-  "Returns Var definition at location, or nil."
-  [index [row col]]
-  (reduce
-    (fn [_ {:keys [name-col name-end-col] :as var-definition}]
-      (when (<= name-col col name-end-col)
-        (reduced var-definition)))
-    nil
-    ((IVD_ index) row)))
-
-(defn ?VU_
-  "Returns Var usage at location, or nil."
-  [index [row col]]
-  (reduce
-    (fn [_ {:keys [name-col name-end-col] :as var-usage}]
-      (when (<= name-col col name-end-col)
-        (reduced var-usage)))
-    nil
-    ((IVU_ index) row)))
-
-(defn ?KD_
-  "Returns keyword definition at location, or nil."
-  [index [row col]]
-  (reduce
-    (fn [_ {k-col :col
-            k-end-col :end-col :as keyword-definition}]
-      (when (<= k-col col k-end-col)
-        (reduced keyword-definition)))
-    nil
-    ((IKD_ index) row)))
-
-(defn ?KU_
-  "Returns keyword usage at location, or nil."
-  [index [row col]]
-  (reduce
-    (fn [_ {k-col :col
-            k-end-col :end-col :as keyword-usage}]
-      (when (<= k-col col k-end-col)
-        (reduced keyword-usage)))
-    nil
-    ((IKU_ index) row)))
-
-(defn ?T_
-  "Returns T at location, or nil.
-
-  Where T is one of:
-   - Namespace definition
-   - Namespace usages
-   - Var definition
-   - Var usage
-   - Local definition
-   - Local usage
-   - Keyword definition
-   - Keyword usage"
-  [index row+col]
-  (reduce
-    (fn [_ k]
-      (case k
-        :nightincode/VD
-        (when-let [var-definition (?VD_ index row+col)]
-          (reduced (with-meta var-definition {:nightincode/TT :nightincode/VD
-                                              :nightincode/row+col row+col})))
-
-        :nightincode/VU
-        (when-let [var-usage (?VU_ index row+col)]
-          (reduced (with-meta var-usage {:nightincode/TT :nightincode/VU
-                                         :nightincode/row+col row+col})))
-
-        :nightincode/KU
-        (when-let [keyword-usage (?KU_ index row+col)]
-          (reduced (with-meta keyword-usage {:nightincode/TT :nightincode/KU
-                                             :nightincode/row+col row+col})))
-
-        :nightincode/KD
-        (when-let [keyword-definition (?KD_ index row+col)]
-          (reduced (with-meta keyword-definition {:nightincode/TT :nightincode/KD
-                                                  :nightincode/row+col row+col})))
-
-        nil))
-    nil
-    [:nightincode/VU
-     :nightincode/VD
-     :nightincode/LD
-     :nightincode/LU
-     :nightincode/KU
-     :nightincode/KD]))
-
-(defn TT [T]
-  (:nightincode/TT (meta T)))
-
-(defn VD-ident
-  "Var definition identity symbol."
-  [{:keys [ns name]}]
-  (symbol (str ns) (str name)))
-
-(defn VU-ident
-  "Var usage identity symbol."
-  [{:keys [to name]}]
-  (symbol (str to) (str name)))
-
 
 ;; ---------------------------------------------------------
 
@@ -502,23 +253,6 @@
 (defn _analyzer-conn [state]
   (get-in state [:nightincode/analyzer :conn]))
 
-(defn _project-index [state]
-  (get-in state [:nightincode/index :project]))
-
-(defn _text-document-index [state textDocument]
-  (get-in state [:nightincode/index (text-document-uri textDocument)]))
-
-
-
-(defn !index-document [state {:keys [uri analysis]}]
-  (let [index-V (index-V analysis)
-        index-K (index-K analysis)
-
-        index (merge index-V index-K)
-
-        state (update-in state [:nightincode/index uri] merge index)]
-
-    state))
 
 (defn diagnostic
   "Returns a Diagnostic for a clj-kondo finding."
@@ -723,16 +457,13 @@
         result (analyze-text {:uri text-document-uri
                               :text text-document-text})
 
-        {:keys [findings analysis]} result]
+        {:keys [findings]} result]
 
     ;; Publish clj-kondo findings:
     ;; (Findings are encoded as LSP Diagnostics)
     (publish-diagnostics (_out @state-ref)
       {:uri text-document-uri
-       :diagnostics (diagnostics findings)})
-
-    (swap! state-ref !index-document {:uri text-document-uri
-                                      :analysis analysis})))
+       :diagnostics (diagnostics findings)})))
 
 (defmethod lsp/handle "textDocument/didChange" [notification]
 
@@ -797,17 +528,7 @@
     ;; Clear diagnostics.
     (publish-diagnostics (_out @state-ref)
       {:uri text-document-uri
-       :diagnostics []})
-
-    ;; TODO: Delete
-    (swap! state-ref
-      (fn [state]
-        (let [text-document-uri (text-document-uri textDocument)
-
-              state (update state :nightincode/index dissoc text-document-uri)
-              state (update state :clj-kondo/result dissoc text-document-uri)]
-
-          state)))))
+       :diagnostics []})))
 
 (defmethod lsp/handle "textDocument/definition" [request]
 
@@ -1171,21 +892,6 @@
 
   (keys @state-ref)
 
-  (let [{:keys [LSP/InitializeParams
-                LSP/InitializedParams
-
-                nightincode/index
-                clj-kondo/result]} @state-ref]
-
-    (def initialize-params InitializeParams)
-    (def initialized-params InitializedParams)
-    (def index index)
-    (def clj-kondo-result result))
-
-  (keys index)
-
-  (:project index)
-
 
   ;; -- Queries
 
@@ -1361,18 +1067,7 @@
     :end-col 21,
     :row 49}
 
-  (IVD_ (_text-document-index @state-ref {:uri lispi-core-uri}))
-  (?VD_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13])
 
-  (IVU_ (_text-document-index @state-ref {:uri lispi-core-uri}))
-  (?VU_ (_text-document-index @state-ref {:uri lispi-core-uri}) [184 15])
-
-  (IVD (_text-document-index @state-ref {:uri lispi-core-uri}))
-  (IVU (_text-document-index @state-ref {:uri lispi-core-uri}))
-
-  (meta (?T_ (_text-document-index @state-ref {:uri lispi-core-uri}) [112 13]))
-
-  (keys index)
 
   (lsp/write (_out @state-ref)
     {:jsonrpc "2.0"
