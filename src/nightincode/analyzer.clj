@@ -107,9 +107,14 @@
      :semthetic/identifier (:to m)
      :semthetic/filename (:filename m)
      :semthetic/locs
-     [{:loc/row (:name-row m)
-       :loc/col  (:name-col m)
-       :loc/col-end  (:name-end-col m)}]}))
+     (cond-> [{:loc/row (:name-row m)
+               :loc/col  (:name-col m)
+               :loc/col-end  (:name-end-col m)}]
+       ;; Include alias location (optional).
+       (:alias m)
+       (conj {:loc/row (:alias-row m)
+              :loc/col  (:alias-col m)
+              :loc/col-end  (:alias-end-col m)}))}))
 
 (defn var-semthetic
   "Var data defined to be persisted in the database.
