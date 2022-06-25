@@ -4,12 +4,18 @@
  {org.clojure/clojure {:mvn/version "1.11.1"}
   org.clojure/data.json {:mvn/version "2.4.0"}
   org.clojure/tools.logging {:mvn/version "1.2.4"}
+  org.clojure/tools.deps.alpha {:mvn/version "0.14.1212"}
+  
+  datascript/datascript {:mvn/version "1.3.13"}
   ch.qos.logback/logback-classic {:mvn/version "1.2.11"}
-  clj-kondo/clj-kondo {:mvn/version "2022.05.31"}
+  clj-kondo/clj-kondo {:mvn/version "2022.06.22"}
   io.github.pedrorgirardi/lspie {:local/root "../lspie"}}
 
  :aliases
- {:start
+ {:test
+  {:extra-paths ["test"]}
+
+  :start
   {:exec-fn nightincode.server/start}
 
   :jar
