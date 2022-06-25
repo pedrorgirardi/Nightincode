@@ -517,6 +517,41 @@
 
     state))
 
+(defn diagnostic
+  "Returns a Diagnostic for a clj-kondo finding."
+  [{:keys [row
+           end-row
+           col
+           end-col
+           message
+           level]}]
+  {:range
+   {:start
+    {:line (dec row)
+     :character (dec col)}
+    :end
+    {:line (dec end-row)
+     :character (dec end-col)}}
+   :source "Nightincode"
+   :message message
+   :severity
+   (case level
+     :error
+     1
+     :warning
+     2
+
+     3)})
+
+(defn publish-diagnostics
+  "Diagnostics notification are sent from the server to the client to signal results of validation runs.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_publishDiagnostics"
+  [out params]
+  (lsp/write out
+    {:jsonrpc "2.0"
+     :method "textDocument/publishDiagnostics"
+     :params params}))
 
 ;; ---------------------------------------------------------
 
@@ -668,10 +703,20 @@
         text-document-text (text-document-text textDocument)
 
         result (analyze-text {:uri text-document-uri
-                              :text text-document-text})]
+                              :text text-document-text})
+
+        {:keys [findings analysis]} result
+
+        diagnostics (map diagnostic findings)]
+
+    ;; Publish clj-kondo findings:
+    ;; (Findings are encoded as LSP Diagnostics)
+    (publish-diagnostics (_out @state-ref)
+      {:uri text-document-uri
+       :diagnostics diagnostics})
 
     (swap! state-ref !index-document {:uri text-document-uri
-                                      :analysis (:analysis result)})))
+                                      :analysis analysis})))
 
 (defmethod lsp/handle "textDocument/didChange" [notification]
 
@@ -687,8 +732,10 @@
         ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
         text-document-text (get-in notification [:params :contentChanges 0 :text])
 
-        {:keys [analysis]} (analyze-text {:uri text-document-uri
-                                          :text text-document-text})
+        {:keys [analysis findings]} (analyze-text {:uri text-document-uri
+                                                   :text text-document-text})
+
+        diagnostics (map diagnostic findings)
 
         index (analyzer/index analysis)
 
@@ -708,7 +755,11 @@
 
         conn (_analyzer-conn @state-ref)]
 
-    (d/transact! conn tx-data)))
+    (d/transact! conn tx-data)
+
+    (publish-diagnostics (_out @state-ref)
+      {:uri text-document-uri
+       :diagnostics diagnostics})))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 
@@ -725,7 +776,16 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
 
-  (let [textDocument (get-in notification [:params :textDocument])]
+  (let [textDocument (get-in notification [:params :textDocument])
+
+        text-document-uri (text-document-uri textDocument)]
+
+    ;; Clear diagnostics.
+    (publish-diagnostics (_out @state-ref)
+      {:uri text-document-uri
+       :diagnostics []})
+
+    ;; TODO: Delete
     (swap! state-ref
       (fn [state]
         (let [text-document-uri (text-document-uri textDocument)

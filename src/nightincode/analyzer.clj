@@ -308,10 +308,12 @@
 
   (def result
     (clj-kondo/run!
-      {:lint [nightincode-path]
+      {:lint [example1-path]
        :config default-clj-kondo-config}))
 
   (keys result)
+
+  (:findings result)
 
   (keys (:analysis result))
 
