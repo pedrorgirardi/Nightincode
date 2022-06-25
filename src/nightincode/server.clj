@@ -926,77 +926,48 @@
   (try
     (let [textDocument (get-in request [:params :textDocument])
 
+          cursor-position (get-in request [:params :position])
           cursor-line (get-in request [:params :position :line])
+          cursor-character (get-in request [:params :position :character])
 
-          index (_text-document-index @state-ref textDocument)
+          filename (text-document-path textDocument)
 
-          row+col [(inc (get-in request [:params :position :line]))
-                   (inc (get-in request [:params :position :character]))]
+          db (d/db (_analyzer-conn @state-ref))
 
-          T (?T_ index row+col)
+          cursor-semthetic (analyzer/?cursor-semthetic db
+                             {:filename (text-document-path textDocument)
+                              :row (inc cursor-line)
+                              :col (inc cursor-character)
+                              :col-end (inc cursor-character)})
 
-          ;; TODO: Extract completions.
+          semthetics (d/q '[:find [(pull ?e [*]) ...]
+                            :in $ ?filename [?semantic ...] [?modifier ...]
+                            :where
+                            [?e :semthetic/filename ?filename]
+                            [?e :semthetic/semantic ?semantic]
+                            [?e :semthetic/modifier ?modifier]]
+                       db filename [:def :usage] [:var :keyword])
 
-          ;; Completions with document definitions.
-          VD-completions (into []
-                           (map
-                             (fn [[sym _]]
-                               ;; Var name only because it's a document definition.
-                               {:label (name sym)
-                                :kind 6}))
-                           (IVD index))
+          completions (into #{}
+                        (map
+                          (fn [semthetic]
+                            {:label (semthetic-label semthetic)}))
+                        semthetics)]
 
-          ;; Completions with document usages - exclude "self definitions".
-          VU-completions (into #{}
-                           (comp
-                             (mapcat val)
-                             (remove
-                               (fn [{:keys [from to]}]
-                                 (= from to)))
-                             (map
-                               (fn [{:keys [to alias name]}]
-                                 {:label (cond
-                                           (contains? #{'clojure.core 'cljs.core} to)
-                                           (str name)
-
-                                           (or alias to)
-                                           (format "%s/%s" (or alias to) name)
-
-                                           :else
-                                           (str name))
-                                  :kind 6})))
-                           (IVU index))
-
-          K-completions (into []
-                          (map
-                            (fn [[k _]]
-                              {:label (str k)
-                               :kind 14}))
-                          ;; Only the keyword is necessary,
-                          ;; so it's okay to combine indexes.
-                          (merge (IKD index) (IKU index)))
-
-          completions (reduce
-                        into
-                        []
-                        [VD-completions
-                         VU-completions
-                         K-completions])]
-
-      (lsp/response request (merge {:items completions}
-                              (when T
-                                {:itemDefaults
-                                 {:editRange
-                                  {:start
-                                   {:line cursor-line
-                                    :character (dec (or (:name-col T) (:col T)))}
-                                   :end
-                                   {:line cursor-line
-                                    :character (dec (or (:name-end-col T) (:end-col T)))}}}}))))
+      (lsp/response request
+        (when (seq completions)
+          (merge {:items completions}
+            (when cursor-semthetic
+              {:itemDefaults
+               {:editRange
+                (analyzer/loc-range
+                  (analyzer/cursor-loc cursor-semthetic cursor-position))}})))))
     (catch Exception ex
+      (log/error ex "Nightincode failed to compute completions.")
+
       (lsp/error-response request
         {:code -32803
-         :message (format "Nightincode failed to compute completions. (%s)"(ex-message ex))}))))
+         :message (format "Nightincode failed to compute completions. (%s)" (ex-message ex))}))))
 
 (defmethod lsp/handle "textDocument/documentSymbol" [request]
 
