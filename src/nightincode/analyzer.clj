@@ -88,8 +88,8 @@
 (defn namespace-semthetic
   [m]
   (merge (semthetic "namespace" m)
-    {:semthetic/semantic :def
-     :semthetic/modifier :namespace
+    {:semthetic/semantic :namespace
+     :semthetic/modifier :def
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -101,8 +101,8 @@
 (defn namespace-usage-semthetic
   [m]
   (merge (semthetic "namespace-usage" m)
-    {:semthetic/semantic :usage
-     :semthetic/modifier :namespace
+    {:semthetic/semantic :namespace
+     :semthetic/modifier :usage
      :semthetic/filename (:filename m)
      :semthetic/locs
      [{:loc/row (:name-row m)
@@ -117,8 +117,8 @@
   [m]
   (let [sym (symbol (name (:ns m)) (name (:name m)))]
     (merge (semthetic "var" m)
-      {:semthetic/semantic :def
-       :semthetic/modifier :var
+      {:semthetic/semantic :var
+       :semthetic/modifier :def
        :semthetic/identifier sym
        :semthetic/filename (:filename m)
        :semthetic/locs
@@ -132,8 +132,8 @@
   [m]
   (let [sym (when-let [to (:to m)] (symbol (name to) (name (:name m))))]
     (merge (semthetic "var-usage" m)
-      {:semthetic/semantic :usage
-       :semthetic/modifier :var
+      {:semthetic/semantic :var
+       :semthetic/modifier :usage
        :semthetic/identifier sym
        :semthetic/filename (:filename m)
        :semthetic/locs
@@ -144,8 +144,8 @@
 (defn local-semthetic
   [m]
   (merge (semthetic "local" m)
-    {:semthetic/semantic :def
-     :semthetic/modifier :local
+    {:semthetic/semantic :local
+     :semthetic/modifier :def
      :semthetic/identifier (:id m)
      :semthetic/filename (:filename m)
      :semthetic/locs
@@ -156,8 +156,8 @@
 (defn local-usage-semthetic
   [m]
   (merge (semthetic "local-usage" m)
-    {:semthetic/semantic :usage
-     :semthetic/modifier :local
+    {:semthetic/semantic :local
+     :semthetic/modifier :usage
      :semthetic/identifier (:id m)
      :semthetic/filename (:filename m)
      :semthetic/locs
@@ -168,8 +168,8 @@
 (defn keyword-semthetic
   [m]
   (merge (semthetic "keyword" m)
-    {:semthetic/semantic :usage
-     :semthetic/modifier :keyword
+    {:semthetic/semantic :keyword
+     :semthetic/modifier :usage
      :semthetic/filename (:filename m)
      :semthetic/identifier
      (if-let [ns (:ns m)]
@@ -261,41 +261,41 @@
 
 (defn ?definitions [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
-         :in $ ?qualifier ?identifier
+         :in $ ?semantic ?identifier
          :where
-         [?e :semthetic/semantic :def]
-         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/semantic ?semantic]
+         [?e :semthetic/modifier :def]
          [?e :semthetic/identifier ?identifier]]
-    db (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+    db (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
 (defn ?file-definitions [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
-         :in $ ?filename ?qualifier ?identifier
+         :in $ ?filename ?semantic ?identifier
          :where
          [?e :semthetic/filename ?filename]
-         [?e :semthetic/semantic :def]
-         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/semantic ?semantic]
+         [?e :semthetic/modifier :def]
          [?e :semthetic/identifier ?identifier]]
-    db (:semthetic/filename semthetic) (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+    db (:semthetic/filename semthetic) (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
 (defn ?usages [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
-         :in $ ?qualifier ?identifier
+         :in $ ?semantic ?identifier
          :where
-         [?e :semthetic/semantic :usage]
-         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/semantic ?semantic]
+         [?e :semthetic/modifier :usage]
          [?e :semthetic/identifier ?identifier]]
-    db (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+    db (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
 (defn ?file-usages [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
-         :in $ ?filename ?qualifier ?identifier
+         :in $ ?filename ?semantic ?identifier
          :where
          [?e :semthetic/filename ?filename]
-         [?e :semthetic/semantic :usage]
-         [?e :semthetic/modifier ?qualifier]
+         [?e :semthetic/semantic ?semantic]
+         [?e :semthetic/modifier :usage]
          [?e :semthetic/identifier ?identifier]]
-    db (:semthetic/filename semthetic) (:semthetic/modifier semthetic) (:semthetic/identifier semthetic)))
+    db (:semthetic/filename semthetic) (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
 
 (comment

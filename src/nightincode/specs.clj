@@ -32,10 +32,10 @@
                 :loc/col-end]))
 
 (s/def :semthetic/semantic
-  #{:def :usage})
+  #{:namespace :var :local :keyword})
 
 (s/def :semthetic/modifier
-  #{:namespace :var :local :keyword})
+  #{:def :usage})
 
 (s/def :semthetic/identifier
   (s/or

@@ -103,19 +103,19 @@
   [semthetic]
   (let [{:semthetic/keys [semantic modifier doc]} semthetic
 
-        modifier+semantic [modifier semantic]]
+        semantic+modifier [semantic modifier]]
     (cond
-      (= modifier+semantic [:namespace :def])
+      (= semantic+modifier [:namespace :def])
       (let [markdown (name (:namespace/name semthetic))
             markdown (if doc
                        (str markdown "\n\n" doc)
                        markdown)]
         markdown)
 
-      (= modifier+semantic [:namespace :usage])
+      (= semantic+modifier [:namespace :usage])
       (name (:namespace-usage/name semthetic))
 
-      (= modifier+semantic [:var :def])
+      (= semantic+modifier [:var :def])
       (let [markdown (format "%s/**%s**" (:var/ns semthetic) (:var/name semthetic))
             markdown (if-let [args (:var/arglist-strs semthetic)]
                        (format "%s\n```clojure\n%s\n```" markdown (str/join "\n" args))
@@ -125,17 +125,17 @@
                        markdown)]
         markdown)
 
-      (= modifier+semantic [:var :usage])
+      (= semantic+modifier [:var :usage])
       (when-let [to (:var-usage/to semthetic)]
         (symbol (name to) (name (:var-usage/name semthetic))))
 
-      (= modifier+semantic [:local :def])
+      (= semantic+modifier [:local :def])
       (name (:local/name semthetic))
 
-      (= modifier+semantic [:local :usage])
+      (= semantic+modifier [:local :usage])
       (name (:local-usage/name semthetic))
 
-      (= modifier+semantic [:keyword :usage])
+      (= semantic+modifier [:keyword :usage])
       (name (:keyword/name semthetic)))))
 
 (defn semthetic-label
@@ -146,37 +146,37 @@
 
          {:keys [show-var-namespace?]} options
 
-         modifier+semantic [modifier semantic]]
+         semantic+modifier [semantic modifier]]
      (cond
-       (= modifier+semantic [:namespace :def])
+       (= semantic+modifier [:namespace :def])
        (name (:namespace/name semthetic))
 
-       (= modifier+semantic [:namespace :usage])
+       (= semantic+modifier [:namespace :usage])
        (name (:namespace-usage/name semthetic))
 
-       (= modifier+semantic [:var :def])
+       (= semantic+modifier [:var :def])
        (if show-var-namespace?
          (str (:semthetic/identifier semthetic))
          (name (:var/name semthetic)))
 
-       (= modifier+semantic [:var :usage])
+       (= semantic+modifier [:var :usage])
        (str (:semthetic/identifier semthetic))
 
-       (= modifier+semantic [:local :def])
+       (= semantic+modifier [:local :def])
        (name (:local/name semthetic))
 
-       (= modifier+semantic [:local :usage])
+       (= semantic+modifier [:local :usage])
        (name (:local-usage/name semthetic))
 
-       (= modifier+semantic [:keyword :usage])
+       (= semantic+modifier [:keyword :usage])
        (str (:semthetic/identifier semthetic))))))
 
 (defn semthetic-symbol-kind
   "Mapping of a Semthetic to a Symbol Kind.
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#symbolKind"
-  [{:semthetic/keys [modifier]}]
-  (case modifier
+  [{:semthetic/keys [semantic]}]
+  (case semantic
     :namespace
     3
 
@@ -189,9 +189,9 @@
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range"
   [{:semthetic/keys [semantic modifier] :as semthetic}]
-  (let [modifier+semantic [modifier semantic]]
+  (let [semantic+modifier [semantic modifier]]
     (cond
-      (= modifier+semantic [:namespace :def])
+      (= semantic+modifier [:namespace :def])
       {:start
        {:line (dec (:namespace/name-row semthetic))
         :character (dec (:namespace/name-col semthetic))}
@@ -199,7 +199,7 @@
        {:line (dec (:namespace/name-row semthetic))
         :character (dec (:namespace/name-end-col semthetic))}}
 
-      (= modifier+semantic [:var :def])
+      (= semantic+modifier [:var :def])
       {:start
        {:line (dec (:var/name-row semthetic))
         :character (dec (:var/name-col semthetic))}
@@ -652,7 +652,7 @@
                             [?e :semthetic/filename ?filename]
                             [?e :semthetic/semantic ?semantic]
                             [?e :semthetic/modifier ?modifier]]
-                       db filename [:def :usage] [:var :keyword])
+                       db filename [:var :keyword] [:def :usage])
 
           completions (into #{}
                         (map
@@ -691,14 +691,12 @@
 
           ;; Find namespace and var definitions in file.
           definitions (d/q '[:find [(pull ?e [*]) ...]
-                             :in $ ?filename
+                             :in $ ?filename [?semantic ...]
                              :where
                              [?e :semthetic/filename ?filename]
-                             [?e :semthetic/semantic :def]
-                             (or
-                               [?e :semthetic/modifier :namespace]
-                               [?e :semthetic/modifier :var])]
-                        db (text-document-path textDocument))
+                             [?e :semthetic/modifier :def]
+                             [?e :semthetic/semantic ?semantic]]
+                        db (text-document-path textDocument) [:namespace :var])
 
           symbols (mapcat
                     (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
@@ -791,15 +789,14 @@
     (let [db (d/db (_analyzer-conn @state-ref))
 
           definitions (d/q '[:find [(pull ?e [*]) ...]
+                             :in $ [?semantic ...]
                              :where
-                             [?e :semthetic/semantic :def]
-                             (or
-                               [?e :semthetic/modifier :namespace]
-                               [?e :semthetic/modifier :var])]
-                        db)
+                             [?e :semthetic/modifier :def]
+                             [?e :semthetic/semantic ?semantic]]
+                        db [:namespace :var])
 
           symbols (mapcat
-                    (fn [{:semthetic/keys [modifier filename locs] :as semthetic}]
+                    (fn [{:semthetic/keys [filename locs] :as semthetic}]
                       (map
                         (fn [loc]
                           {:name (or (semthetic-label semthetic) "?")
