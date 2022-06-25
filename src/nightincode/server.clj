@@ -3,7 +3,6 @@
    [clojure.core.server :refer [start-server]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
-   [clojure.data.json :as json]
    [clojure.string :as str]
    [clojure.tools.logging :as log]
    [clojure.java.shell :as shell]
@@ -58,6 +57,47 @@
 
 (defn filepath-uri ^URI [filepath]
   (->  (io/file filepath) .toPath .toUri))
+
+(defn diagnostic
+  "Returns a Diagnostic for a clj-kondo finding."
+  [{:keys [row
+           end-row
+           col
+           end-col
+           message
+           level]}]
+  {:range
+   {:start
+    {:line (dec row)
+     :character (dec col)}
+    :end
+    {:line (dec (or end-row row))
+     :character (dec (or end-col col))}}
+   :source "Nightincode"
+   :message message
+   :severity
+   (case level
+     :error
+     1
+     :warning
+     2
+
+     3)})
+
+(defn diagnostics [findings]
+  (into []
+    (comp
+      (filter
+        (fn [finding]
+          (or (s/valid? :clj-kondo/finding finding)
+            (log/warn
+              (str "Invalid Finding:"
+                "\n"
+                (with-out-str (pprint/pprint finding))
+                "\nExplain:\n"
+                (s/explain-str :clj-kondo/finding finding))))))
+      (map diagnostic))
+    findings))
 
 (defn semthetic-markdown
   [semthetic]
@@ -217,48 +257,6 @@
 
 (defn _analyzer-conn [state]
   (get-in state [:nightincode/analyzer :conn]))
-
-
-(defn diagnostic
-  "Returns a Diagnostic for a clj-kondo finding."
-  [{:keys [row
-           end-row
-           col
-           end-col
-           message
-           level]}]
-  {:range
-   {:start
-    {:line (dec row)
-     :character (dec col)}
-    :end
-    {:line (dec (or end-row row))
-     :character (dec (or end-col col))}}
-   :source "Nightincode"
-   :message message
-   :severity
-   (case level
-     :error
-     1
-     :warning
-     2
-
-     3)})
-
-(defn diagnostics [findings]
-  (into []
-    (comp
-      (filter
-        (fn [finding]
-          (or (s/valid? :clj-kondo/finding finding)
-            (log/warn
-              (str "Invalid Finding:"
-                "\n"
-                (with-out-str (pprint/pprint finding))
-                "\nExplain:\n"
-                (s/explain-str :clj-kondo/finding finding))))))
-      (map diagnostic))
-    findings))
 
 (defn publish-diagnostics
   "Diagnostics notification are sent from the server to the client to signal results of validation runs.
