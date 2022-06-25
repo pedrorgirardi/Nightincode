@@ -519,7 +519,7 @@
                           (fn [loc]
                             (analyzer/loc-location filename loc))
                           locs))
-                      (analyzer/?definitions db cursor-semthetic))]
+                      (analyzer/?semantic-definitions db cursor-semthetic))]
 
       (lsp/response request (seq locations)))
 
@@ -559,7 +559,7 @@
                           (fn [loc]
                             (analyzer/loc-location filename loc))
                           locs))
-                      (analyzer/?usages db cursor-semthetic))]
+                      (analyzer/?semantic-usages db cursor-semthetic))]
 
       (lsp/response request (seq locations)))
 
@@ -599,7 +599,7 @@
                                        (fn [loc]
                                          {:range (analyzer/loc-range loc)})
                                        locs))
-                                   (analyzer/?file-definitions db cursor-semthetic))
+                                   (analyzer/?semantic-file-definitions db cursor-semthetic))
 
           usages-highlights (mapcat
                               (fn [{:semthetic/keys [locs]}]
@@ -607,7 +607,7 @@
                                   (fn [loc]
                                     {:range (analyzer/loc-range loc)})
                                   locs))
-                              (analyzer/?file-usages db cursor-semthetic))
+                              (analyzer/?semantic-file-usages db cursor-semthetic))
 
           highlights (reduce into [] [definitions-highlights
                                       usages-highlights])]
@@ -752,7 +752,7 @@
                               :col (inc cursor-character)
                               :col-end (inc cursor-character)})
 
-          cursor-definitions (analyzer/?definitions db cursor-semthetic)]
+          cursor-definitions (analyzer/?semantic-definitions db cursor-semthetic)]
 
       (lsp/response request
         (when (seq cursor-definitions)

@@ -261,7 +261,7 @@
          [(<= ?col-end ?col-end_)]]
        db filename row col col-end))
 
-(defn ?definitions [db semthetic]
+(defn ?semantic-definitions [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
          :in $ ?semantic ?identifier
          :where
@@ -270,7 +270,7 @@
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
-(defn ?file-definitions [db semthetic]
+(defn ?semantic-file-definitions [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
          :in $ ?filename ?semantic ?identifier
          :where
@@ -280,7 +280,7 @@
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/filename semthetic) (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
-(defn ?usages [db semthetic]
+(defn ?semantic-usages [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
          :in $ ?semantic ?identifier
          :where
@@ -289,7 +289,7 @@
          [?e :semthetic/identifier ?identifier]]
     db (:semthetic/semantic semthetic) (:semthetic/identifier semthetic)))
 
-(defn ?file-usages [db semthetic]
+(defn ?semantic-file-usages [db semthetic]
   (d/q '[:find [(pull ?e [*]) ...]
          :in $ ?filename ?semantic ?identifier
          :where
