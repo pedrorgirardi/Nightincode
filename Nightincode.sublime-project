@@ -2,7 +2,8 @@
     "folders": [
         {
             "path": ".",
-            "folder_exclude_patterns": [".clj-kondo"],
+            "file_exclude_patterns": ["package-lock.json"],
+            "folder_exclude_patterns": [".clj-kondo", "node_modules"],
         }
     ],
     "pep": {
