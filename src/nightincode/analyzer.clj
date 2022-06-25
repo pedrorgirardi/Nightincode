@@ -194,7 +194,7 @@
     {}
     analysis))
 
-(defn prepare-transaction
+(defn prepare-semthetics
   "Returns tx-data for vars, var-usages, etc.., derived from `index`."
   [index]
   (into []
@@ -321,7 +321,7 @@
     (index (:analysis result)))
 
   (def prepared
-    (prepare-transaction indexed))
+    (prepare-semthetics indexed))
 
   (keys indexed)
 

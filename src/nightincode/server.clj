@@ -588,7 +588,7 @@
 
             index (analyzer/index analysis)
 
-            tx-data (analyzer/prepare-transaction index)]
+            tx-data (analyzer/prepare-semthetics index)]
 
         (d/transact! conn tx-data)))
 
@@ -765,7 +765,7 @@
                       [:db/retractEntity [:file/path filename]]))
                   index)
 
-        tx-data (into tx-data (analyzer/prepare-transaction index))
+        tx-data (into tx-data (analyzer/prepare-semthetics index))
 
         conn (_analyzer-conn @state-ref)]
 
