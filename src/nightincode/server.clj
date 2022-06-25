@@ -156,12 +156,11 @@
 
        (= modifier+semantic [:var :def])
        (if show-var-namespace?
-         (str (symbol (name (:var/ns semthetic)) (name (:var/name semthetic))))
+         (str (:semthetic/identifier semthetic))
          (name (:var/name semthetic)))
 
        (= modifier+semantic [:var :usage])
-       (when-let [to (:var-usage/to semthetic)]
-         (symbol (name to) (name (:var-usage/name semthetic))))
+       (str (:semthetic/identifier semthetic))
 
        (= modifier+semantic [:local :def])
        (name (:local/name semthetic))
@@ -170,7 +169,7 @@
        (name (:local-usage/name semthetic))
 
        (= modifier+semantic [:keyword :usage])
-       (name (:keyword/name semthetic))))))
+       (str (:semthetic/identifier semthetic))))))
 
 (defn semthetic-symbol-kind
   "Mapping of a Semthetic to a Symbol Kind.
