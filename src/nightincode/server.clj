@@ -827,10 +827,13 @@
       (lsp/response request (seq locations)))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find definitions.")
+
       (lsp/error-response request
         {:code -32803
-         :message (format "Nightincode failed to find definitions. (%s)\n"
-                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+         :message
+         (format "Nightincode failed to find definitions. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/references" [request]
 
@@ -864,10 +867,13 @@
       (lsp/response request (seq locations)))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find references.")
+
       (lsp/error-response request
         {:code -32803
-         :message (format "Nightincode failed to find references. (%s)\n"
-                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+         :message
+         (format "Nightincode failed to find references. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/documentHighlight" [request]
 
@@ -912,10 +918,13 @@
       (lsp/response request (seq highlights)))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find highlights.")
+
       (lsp/error-response request
         {:code -32803
-         :message (format "Nightincode failed to find highlights. (%s)\n"
-                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+         :message
+         (format "Nightincode failed to find highlights. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defmethod lsp/handle "textDocument/completion" [request]
 
@@ -1014,6 +1023,8 @@
       (lsp/response request (seq symbols)))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find document symbols.")
+
       (lsp/error-response request
         {:code -32803
          :message
@@ -1061,6 +1072,8 @@
               :value (or markdown "")}}))))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find hover information.")
+
       (lsp/error-response request
         {:code -32803
          :message
@@ -1098,10 +1111,13 @@
       (lsp/response request (seq symbols)))
 
     (catch Exception ex
+      (log/error ex "Nightincode failed to find workspace symbols.")
+
       (lsp/error-response request
         {:code -32803
-         :message (format "Nightincode failed to find workspace symbols. (%s)\n"
-                    (with-out-str (stacktrace/print-stack-trace ex)))}))))
+         :message
+         (format "Nightincode failed to find workspace symbols. (%s)\n"
+           (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
