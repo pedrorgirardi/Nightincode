@@ -658,7 +658,10 @@
           completions (into #{}
                         (map
                           (fn [semthetic]
-                            {:label (semthetic-label semthetic)}))
+                            {:label (semthetic-label semthetic)
+                            
+                              ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
+                             :kind 6}))
                         semthetics)]
 
       (lsp/response request
