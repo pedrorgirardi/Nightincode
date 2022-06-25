@@ -922,79 +922,6 @@
     (d/db conn))
 
 
-  (d/q '[:find  [(pull ?f [*]) ...]
-         :in $ ?path
-         :where
-         [?f :file/path ?path]]
-    (d/db (_analyzer-conn @state-ref))
-    "/Users/pedro/Developer/lispi/src/lispi/core.clj")
-
-  (d/q '[:find  [(pull ?e [*]) ...]
-         :where
-         [?e :loc/locs ?locs]
-         [?locs :loc/row 189]
-         [?locs :loc/col ?col]
-         [?locs :loc/col-end ?col-end]
-         [(>= ?col 12)]
-         [(<= ?col-end 12)]]
-    (d/db conn))
-
-  (d/q '[:find  [(pull ?e [*]) ...]
-         :where
-         [?e :semthetic/locs ?locs]
-         [?e :semthetic/filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"]
-         [?locs :loc/row 183]
-         [?locs :loc/col ?col]
-         [?locs :loc/col-end ?col-end]
-         [(>= 7 ?col)]
-         [(<= 12 ?col-end)]]
-    (d/db conn))
-
-  (d/q '[:find  [(pull ?e [*]) ...]
-         :where
-         [?e :semthetic/locs ?locs]
-         [?e :semthetic/filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"]
-         [?locs :loc/row 183]]
-    (d/db conn))
-
-  (analyzer/?cursor-semthetic (d/db conn)
-    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
-     :row 216
-     :col 15
-     :col-end 15})
-
-  (analyzer/?cursor-semthetic (d/db conn)
-    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/server.clj"
-     :row 1032
-     :col 26
-     :col-end 26})
-
-  (analyzer/?definitions (d/db conn) *1)
-
-  (analyzer/?usages (d/db conn)
-    '{:semthetic/semantic :def,
-      :semthetic/modifier :var,
-      :semthetic/identifier nightincode.analyzer/?semthetic_})
-
-  (d/q '[:find [(pull ?e [*]) ...]
-         :in $ ?qualifier ?identifier
-         :where
-         [?e :semthetic/semantic :usage]
-         ]
-    (d/db conn) :var 'nightincode.analyzer/?semthetic_)
-
-  (analyzer/?cursor-semthetic (d/db conn)
-    {:filename "/Users/pedro/Developer/Nightincode/src/nightincode/analyzer.clj"
-     :row 183
-     :col 31
-     :col-end 31})
-
-  (d/q '[:find  ?l
-         :in $
-         :where
-         [?l :loc/locs]]
-    (d/db (_analyzer-conn @state-ref)))
-
   (lsp/handle
     {:method "textDocument/completion"
      :params
@@ -1004,30 +931,6 @@
       :position
       {:line 119
        :character 40}}})
-
-  (def lispi-core-uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj")
-
-  (clj-kondo/run!
-    {:lint [lispi-core-uri]
-     :config default-clj-kondo-config})
-
-  '{:row 42,
-    :col 29,
-    :end-row 42,
-    :end-col 32,
-    :name "as",
-    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
-    :from user}
-
-  '{:end-row 49,
-    :ns lispi,
-    :name "tokens",
-    :filename "/Users/pedro/Developer/lispi/src/lispi/core.clj",
-    :from lispi.core,
-    :col 8,
-    :reg clojure.spec.alpha/def,
-    :end-col 21,
-    :row 49}
 
 
 
