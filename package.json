@@ -78,8 +78,7 @@
     "clean": "rm -rf .shadow-cljs/",
     "watch": "npx shadow-cljs watch :extension",
     "compile": "npx shadow-cljs compile :extension",
-    "release": "npx shadow-cljs release :extension",
-    "vscode:prepublish": "npm run clean && npm run release"
+    "release": "npx shadow-cljs release :extension"
   },
   "devDependencies": {
     "shadow-cljs": "^2.19.3"
