@@ -85,7 +85,7 @@
           [(keyword ns (name k)) v])))
     m))
 
-(defn namespace-data
+(defn namespace-semthetic
   [m]
   (merge (semthetic "namespace" m)
     {:semthetic/semantic :def
@@ -98,7 +98,7 @@
     (when-let [doc (:doc m)]
        {:semthetic/doc doc})))
 
-(defn namespace-usage-data
+(defn namespace-usage-semthetic
   [m]
   (merge (semthetic "namespace-usage" m)
     {:semthetic/semantic :usage
@@ -109,7 +109,7 @@
        :loc/col  (:name-col m)
        :loc/col-end  (:name-end-col m)}]}))
 
-(defn var-data
+(defn var-semthetic
   "Var data defined to be persisted in the database.
 
   Name row & col encode the location of the symbol.
@@ -128,7 +128,7 @@
       (when-let [doc (:doc m)]
        {:semthetic/doc doc}))))
 
-(defn var-usage-data
+(defn var-usage-semthetic
   [m]
   (let [sym (when-let [to (:to m)] (symbol (name to) (name (:name m))))]
     (merge (semthetic "var-usage" m)
@@ -141,7 +141,7 @@
          :loc/col  (or (:name-col m) (:col m))
          :loc/col-end  (or (:name-end-col m) (:end-col m))}]})))
 
-(defn local-data
+(defn local-semthetic
   [m]
   (merge (semthetic "local" m)
     {:semthetic/semantic :def
@@ -153,7 +153,7 @@
        :loc/col  (:col m)
        :loc/col-end (:end-col m)}]}))
 
-(defn local-usage-data
+(defn local-usage-semthetic
   [m]
   (merge (semthetic "local-usage" m)
     {:semthetic/semantic :usage
@@ -165,7 +165,7 @@
        :loc/col  (or (:name-col m) (:col m))
        :loc/col-end  (or (:name-end-col m) (:end-col m))}]}))
 
-(defn keyword-data
+(defn keyword-semthetic
   [m]
   (merge (semthetic "keyword" m)
     {:semthetic/semantic :usage
@@ -204,25 +204,25 @@
                            (fn [tx-data semantic items]
                              (let [xform (cond
                                            (= semantic :namespace-definitions)
-                                           (map namespace-data)
+                                           (map namespace-semthetic)
 
                                            (= semantic :namespace-usages)
-                                           (map namespace-usage-data)
+                                           (map namespace-usage-semthetic)
 
                                            (= semantic :var-definitions)
-                                           (map var-data)
+                                           (map var-semthetic)
 
                                            (= semantic :var-usages)
-                                           (map var-usage-data)
+                                           (map var-usage-semthetic)
 
                                            (= semantic :locals)
-                                           (map local-data)
+                                           (map local-semthetic)
 
                                            (= semantic :local-usages)
-                                           (map local-usage-data)
+                                           (map local-usage-semthetic)
 
                                            (= semantic :keywords)
-                                           (map keyword-data))]
+                                           (map keyword-semthetic))]
                                (if xform
                                  (into tx-data
                                    (comp
