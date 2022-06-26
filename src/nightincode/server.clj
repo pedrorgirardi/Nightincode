@@ -24,7 +24,8 @@
     TimeUnit)
 
    (java.io
-    Writer)
+    Writer
+    PrintWriter)
 
    (java.net
     ServerSocket
@@ -214,20 +215,24 @@
 (defn analyze
   "Analyze Clojure/Script forms with clj-kondo."
   [{:keys [config lint]}]
-  (clj-kondo/run!
-    {:lint lint
-     :config (or config default-clj-kondo-config)}))
+  (with-open [noop (PrintWriter. (Writer/nullWriter))]
+    (binding [*err* noop]
+      (clj-kondo/run!
+        {:lint lint
+         :config (or config default-clj-kondo-config)}))))
 
 (defn analyze-text
   "Analyze Clojure/Script forms with clj-kondo.
 
   `uri` is used to report the filename."
   [{:keys [uri text config]}]
-  (with-in-str text
-    (clj-kondo/run!
-      {:lint ["-"]
-       :filename (.getPath (URI. uri))
-       :config (or config default-clj-kondo-config)})))
+  (with-open [noop (PrintWriter. (Writer/nullWriter))]
+    (binding [*err* noop]
+      (with-in-str text
+        (clj-kondo/run!
+          {:lint ["-"]
+           :filename (.getPath (URI. uri))
+           :config (or config default-clj-kondo-config)})))))
 
 (defn analyzer-paths [root-path]
   (let [config-file (io/file root-path "nightincode.edn")]
@@ -434,10 +439,12 @@
       ;; Publish clj-kondo findings:
       ;; (Findings are encoded as LSP Diagnostics)
       #_(publish-diagnostics (_out @state-ref)
-          {:uri text-document-uri
-           :diagnostics diagnostics})
+        {:uri text-document-uri
+         :diagnostics diagnostics})
 
-      #_(log/debug "Publish diagnostics" text-document-uri diagnostics))
+      #_(log/debug
+        (format "Publish diagnostics %s\n%s" text-document-uri
+          (with-out-str (pprint/pprint diagnostics)))))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didOpen"))))
@@ -486,7 +493,9 @@
           {:uri text-document-uri
            :diagnostics diagnostics})
 
-      #_(log/debug "Publish diagnostics" text-document-uri diagnostics))
+      #_(log/debug
+        (format "Publish diagnostics %s\n%s" text-document-uri
+          (with-out-str (pprint/pprint diagnostics)))))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didChange"))))
