@@ -433,11 +433,11 @@
 
       ;; Publish clj-kondo findings:
       ;; (Findings are encoded as LSP Diagnostics)
-      (publish-diagnostics (_out @state-ref)
-        {:uri text-document-uri
-         :diagnostics diagnostics})
+      #_(publish-diagnostics (_out @state-ref)
+          {:uri text-document-uri
+           :diagnostics diagnostics})
 
-      (log/debug "Publish diagnostics" text-document-uri diagnostics))
+      #_(log/debug "Publish diagnostics" text-document-uri diagnostics))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didOpen"))))
@@ -482,11 +482,11 @@
 
       (d/transact! conn tx-data)
 
-      (publish-diagnostics (_out @state-ref)
-        {:uri text-document-uri
-         :diagnostics diagnostics})
+      #_(publish-diagnostics (_out @state-ref)
+          {:uri text-document-uri
+           :diagnostics diagnostics})
 
-      (log/debug "Publish diagnostics" text-document-uri diagnostics))
+      #_(log/debug "Publish diagnostics" text-document-uri diagnostics))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didChange"))))
@@ -512,11 +512,11 @@
           text-document-uri (text-document-uri textDocument)]
 
       ;; Clear diagnostics.
-      (publish-diagnostics (_out @state-ref)
-        {:uri text-document-uri
-         :diagnostics []})
+      #_(publish-diagnostics (_out @state-ref)
+          {:uri text-document-uri
+           :diagnostics []})
 
-      (log/debug "Clear diagnostics" text-document-uri))
+      #_(log/debug "Clear diagnostics" text-document-uri))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didClose"))))
