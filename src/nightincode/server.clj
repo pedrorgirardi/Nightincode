@@ -438,11 +438,11 @@
 
       ;; Publish clj-kondo findings:
       ;; (Findings are encoded as LSP Diagnostics)
-      #_(publish-diagnostics (_out @state-ref)
+      (publish-diagnostics (_out @state-ref)
         {:uri text-document-uri
          :diagnostics diagnostics})
 
-      #_(log/debug
+      (log/debug
         (format "Publish diagnostics %s\n%s" text-document-uri
           (with-out-str (pprint/pprint diagnostics)))))
 
@@ -521,11 +521,11 @@
           text-document-uri (text-document-uri textDocument)]
 
       ;; Clear diagnostics.
-      #_(publish-diagnostics (_out @state-ref)
-          {:uri text-document-uri
-           :diagnostics []})
+      (publish-diagnostics (_out @state-ref)
+        {:uri text-document-uri
+         :diagnostics []})
 
-      #_(log/debug "Clear diagnostics" text-document-uri))
+      (log/debug "Clear diagnostics" text-document-uri))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didClose"))))
