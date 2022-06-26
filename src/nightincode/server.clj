@@ -262,10 +262,13 @@
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_publishDiagnostics"
   [out params]
-  (lsp/write out
-    {:jsonrpc "2.0"
-     :method "textDocument/publishDiagnostics"
-     :params params}))
+  (try
+    (lsp/write out
+      {:jsonrpc "2.0"
+       :method "textDocument/publishDiagnostics"
+       :params params})
+    (catch Exception ex
+      (log/error ex "Nightincode failed to publish diagnostics."))))
 
 ;; ---------------------------------------------------------
 
@@ -415,21 +418,29 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didOpen
 
-  (let [textDocument (get-in notification [:params :textDocument])
+  (try
+    (let [textDocument (get-in notification [:params :textDocument])
 
-        text-document-uri (text-document-uri textDocument)
-        text-document-text (text-document-text textDocument)
+          text-document-uri (text-document-uri textDocument)
+          text-document-text (text-document-text textDocument)
 
-        result (analyze-text {:uri text-document-uri
-                              :text text-document-text})
+          result (analyze-text {:uri text-document-uri
+                                :text text-document-text})
 
-        {:keys [findings]} result]
+          {:keys [findings]} result
 
-    ;; Publish clj-kondo findings:
-    ;; (Findings are encoded as LSP Diagnostics)
-    (publish-diagnostics (_out @state-ref)
-      {:uri text-document-uri
-       :diagnostics (diagnostics findings)})))
+          diagnostics (diagnostics findings)]
+
+      ;; Publish clj-kondo findings:
+      ;; (Findings are encoded as LSP Diagnostics)
+      (publish-diagnostics (_out @state-ref)
+        {:uri text-document-uri
+         :diagnostics diagnostics})
+
+      (log/debug "Publish diagnostics" text-document-uri diagnostics))
+
+    (catch Exception ex
+      (log/error ex "Error: textDocument/didOpen"))))
 
 (defmethod lsp/handle "textDocument/didChange" [notification]
 
@@ -438,39 +449,47 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didChange
 
-  (let [textDocument (get-in notification [:params :textDocument])
+  (try
+    (let [textDocument (get-in notification [:params :textDocument])
 
-        text-document-uri (text-document-uri textDocument)
+          text-document-uri (text-document-uri textDocument)
 
-        ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
-        text-document-text (get-in notification [:params :contentChanges 0 :text])
+          ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
+          text-document-text (get-in notification [:params :contentChanges 0 :text])
 
-        {:keys [analysis findings]} (analyze-text {:uri text-document-uri
-                                                   :text text-document-text})
+          {:keys [analysis findings]} (analyze-text {:uri text-document-uri
+                                                     :text text-document-text})
 
-        index (analyzer/index analysis)
+          index (analyzer/index analysis)
 
-        ;; Note:
-        ;; Retract file entities before adding new ones.
-        ;; Old Semthetics are retracted because `:file/semthetics` is a component.
-        ;;
-        ;; TODO: Investigate if there's a better way to update - retract & add.
-        
-        tx-data (into []
-                  (map
-                    (fn [[filename _]]
-                      [:db/retractEntity [:file/path filename]]))
-                  index)
+          ;; Note:
+          ;; Retract file entities before adding new ones.
+          ;; Old Semthetics are retracted because `:file/semthetics` is a component.
+          ;;
+          ;; TODO: Investigate if there's a better way to update - retract & add.
 
-        tx-data (into tx-data (analyzer/prepare-semthetics index))
+          tx-data (into []
+                    (map
+                      (fn [[filename _]]
+                        [:db/retractEntity [:file/path filename]]))
+                    index)
 
-        conn (_analyzer-conn @state-ref)]
+          tx-data (into tx-data (analyzer/prepare-semthetics index))
 
-    (d/transact! conn tx-data)
+          conn (_analyzer-conn @state-ref)
 
-    (publish-diagnostics (_out @state-ref)
-      {:uri text-document-uri
-       :diagnostics (diagnostics findings)})))
+          diagnostics (diagnostics findings)]
+
+      (d/transact! conn tx-data)
+
+      (publish-diagnostics (_out @state-ref)
+        {:uri text-document-uri
+         :diagnostics diagnostics})
+
+      (log/debug "Publish diagnostics" text-document-uri diagnostics))
+
+    (catch Exception ex
+      (log/error ex "Error: textDocument/didChange"))))
 
 (defmethod lsp/handle "textDocument/didSave" [_notification]
 
@@ -487,14 +506,20 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_didClose
 
-  (let [textDocument (get-in notification [:params :textDocument])
+  (try
+    (let [textDocument (get-in notification [:params :textDocument])
 
-        text-document-uri (text-document-uri textDocument)]
+          text-document-uri (text-document-uri textDocument)]
 
-    ;; Clear diagnostics.
-    (publish-diagnostics (_out @state-ref)
-      {:uri text-document-uri
-       :diagnostics []})))
+      ;; Clear diagnostics.
+      (publish-diagnostics (_out @state-ref)
+        {:uri text-document-uri
+         :diagnostics []})
+
+      (log/debug "Clear diagnostics" text-document-uri))
+
+    (catch Exception ex
+      (log/error ex "Error: textDocument/didClose"))))
 
 (defmethod lsp/handle "textDocument/definition" [request]
 
