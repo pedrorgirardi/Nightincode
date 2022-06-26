@@ -862,21 +862,7 @@
 (defn -main [& _]
   (start
     {:in System/in
-     :out (lsp/buffered-writer System/out)
-     :trace
-     (fn [{:keys [header status content error] :as trace}]
-       (case status
-         :read
-         (log/debug status (select-keys trace [:header :numbytes]))
-
-         ;; Note: `content` is a string when there's a decoding error.
-         :decode-error
-         (log/error error status header content)
-
-         :handled
-         (log/debug status (select-keys content [:id :method]))
-
-         nil))}))
+     :out (lsp/buffered-writer System/out)}))
 
 
 (comment
