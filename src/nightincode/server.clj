@@ -553,7 +553,7 @@
       (lsp/response request (seq locations)))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find definitions.")
+      (log/error ex "Error: textDocument/definition")
 
       (lsp/error-response request
         {:code -32803
@@ -593,7 +593,7 @@
       (lsp/response request (seq locations)))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find references.")
+      (log/error ex "Error: textDocument/references")
 
       (lsp/error-response request
         {:code -32803
@@ -644,7 +644,7 @@
       (lsp/response request (seq highlights)))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find highlights.")
+      (log/error ex "Error: textDocument/documentHighlight")
 
       (lsp/error-response request
         {:code -32803
@@ -701,7 +701,7 @@
                 (analyzer/loc-range
                   (analyzer/cursor-loc cursor-semthetic cursor-position))}})))))
     (catch Exception ex
-      (log/error ex "Nightincode failed to compute completions.")
+      (log/error ex "Error: textDocument/completion")
 
       (lsp/error-response request
         {:code -32803
@@ -750,7 +750,7 @@
       (lsp/response request (seq symbols)))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find document symbols.")
+      (log/error ex "Error: textDocument/documentSymbol")
 
       (lsp/error-response request
         {:code -32803
@@ -799,7 +799,7 @@
               :value (or markdown "")}}))))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find hover information.")
+      (log/error ex "Error: textDocument/hover")
 
       (lsp/error-response request
         {:code -32803
@@ -837,7 +837,7 @@
       (lsp/response request (seq symbols)))
 
     (catch Exception ex
-      (log/error ex "Nightincode failed to find workspace symbols.")
+      (log/error ex "Error: workspace/symbol")
 
       (lsp/error-response request
         {:code -32803
