@@ -403,6 +403,10 @@
 (defmethod lsp/handle "$/cancelRequest" [_]
   nil)
 
+(defmethod lsp/handle "$/setTrace" [_]
+  nil)
+
+
 (defmethod lsp/handle "textDocument/didOpen" [notification]
 
   ;; The document open notification is sent from the client to the server to signal newly opened text documents.
