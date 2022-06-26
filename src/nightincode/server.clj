@@ -215,8 +215,10 @@
 (defn analyze
   "Analyze Clojure/Script forms with clj-kondo."
   [{:keys [config lint]}]
-  (with-open [noop (PrintWriter. (Writer/nullWriter))]
-    (binding [*err* noop]
+  (with-open [noop-out (PrintWriter. (Writer/nullWriter))
+              noop-err (PrintWriter. (Writer/nullWriter))]
+    (binding [*out* noop-out
+              *err* noop-err]
       (clj-kondo/run!
         {:lint lint
          :config (or config default-clj-kondo-config)}))))
@@ -226,8 +228,10 @@
 
   `uri` is used to report the filename."
   [{:keys [uri text config]}]
-  (with-open [noop (PrintWriter. (Writer/nullWriter))]
-    (binding [*err* noop]
+  (with-open [noop-out (PrintWriter. (Writer/nullWriter))
+              noop-err (PrintWriter. (Writer/nullWriter))]
+    (binding [*out* noop-out
+              *err* noop-err]
       (with-in-str text
         (clj-kondo/run!
           {:lint ["-"]
@@ -489,11 +493,11 @@
 
       (d/transact! conn tx-data)
 
-      #_(publish-diagnostics (_out @state-ref)
+      (publish-diagnostics (_out @state-ref)
           {:uri text-document-uri
            :diagnostics diagnostics})
 
-      #_(log/debug
+      (log/debug
         (format "Publish diagnostics %s\n%s" text-document-uri
           (with-out-str (pprint/pprint diagnostics)))))
 
