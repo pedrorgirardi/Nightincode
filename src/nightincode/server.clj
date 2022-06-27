@@ -303,7 +303,7 @@
 
         (d/transact! conn tx-data)))
 
-    (swap! state-ref assoc
+    (set-state assoc
       :LSP/InitializeParams (:params request)
       :nightincode/analyzer {:conn conn}))
 
@@ -383,7 +383,7 @@
                         {:nightincode/probe-executor executor
                          :nightincode/probe probe}))]
 
-    (swap! state-ref merge {:LSP/InitializedParams (:params notification)} probe-state)
+    (set-state merge {:LSP/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
     (lsp/write (_out @state-ref)
@@ -400,7 +400,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
 
-  (swap! state-ref assoc :nightincode/shutdown? true)
+  (set-state assoc :nightincode/shutdown? true)
 
   (lsp/response request nil))
 
