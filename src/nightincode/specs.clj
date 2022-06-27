@@ -2,6 +2,8 @@
   (:require
    [clojure.spec.alpha :as s]))
 
+;; -- clj-kondo Finding
+
 (s/def :clj-kondo.finding/row pos-int?)
 (s/def :clj-kondo.finding/end-row pos-int?)
 (s/def :clj-kondo.finding/col pos-int?)
@@ -22,6 +24,8 @@
      :clj-kondo.finding/end-col]))
 
 
+;; -- Loc
+
 (s/def :loc/row nat-int?)
 (s/def :loc/col nat-int?)
 (s/def :loc/col-end nat-int?)
@@ -30,6 +34,9 @@
   (s/keys :req [:loc/row
                 :loc/col
                 :loc/col-end]))
+
+
+;; -- Semthetic
 
 (s/def :semthetic/semantic
   #{:namespace :var :local :keyword})
@@ -56,3 +63,10 @@
           :semthetic/locs
           :semthetic/filename]
     :opt [:semthetic/identifier]))
+
+
+;; -- File
+
+(s/def :file/path string?)
+
+(s/def :file/semthetics (s/coll-of :semthetic/semthetic))
