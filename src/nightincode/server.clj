@@ -253,6 +253,9 @@
 
 (def state-ref (atom nil))
 
+(defn set-state [f & args]
+  (swap! state-ref #(apply f % args)))
+
 (defn _out ^Writer [state]
   (:nightincode/out state))
 
@@ -440,6 +443,9 @@
 
           diagnostics (diagnostics findings)]
 
+      ;; Persist in-memory document's text.
+      (set-state assoc-in [:LSP/document text-document-uri] text-document-text)
+
       ;; Publish clj-kondo findings:
       ;; (Findings are encoded as LSP Diagnostics)
       (publish-diagnostics (_out @state-ref)
@@ -493,6 +499,9 @@
 
       (d/transact! conn tx-data)
 
+      ;; Update document's persisted text.
+      (set-state assoc-in [:LSP/document text-document-uri] text-document-text)
+
       (publish-diagnostics (_out @state-ref)
           {:uri text-document-uri
            :diagnostics diagnostics})
@@ -523,6 +532,9 @@
     (let [textDocument (get-in notification [:params :textDocument])
 
           text-document-uri (text-document-uri textDocument)]
+
+      ;; Clear document's persisted text.
+      (set-state update :LSP/document dissoc text-document-uri)
 
       ;; Clear diagnostics.
       (publish-diagnostics (_out @state-ref)

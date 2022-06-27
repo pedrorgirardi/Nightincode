@@ -1,7 +1,13 @@
+(ns dev
+  (:require
+   [nightincode.server :as server]
+   [datascript.core :as d]))
+
 (comment
 
-  (require '[nightincode.server :as server])
-  (require '[datascript.core :as d])
+
+  (keys (:LSP/document @server/state-ref))
+
 
   (def conn (server/_analyzer-conn @server/state-ref))
 
