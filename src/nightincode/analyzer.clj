@@ -74,7 +74,9 @@
   {:uri (->  (io/file filename) .toPath .toUri .toString)
    :range (loc-range loc)})
 
-(defn semthetic [ns m]
+(defn semthetic
+  "Returns a Semthetic `e` created from `m`."
+  [e m]
   (into {}
     (comp
       (remove
@@ -82,7 +84,7 @@
           (nil? v)))
       (map
         (fn [[k v]]
-          [(keyword ns (name k)) v])))
+          [(keyword e (name k)) v])))
     m))
 
 (defn namespace-semthetic
