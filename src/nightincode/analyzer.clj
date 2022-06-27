@@ -335,44 +335,4 @@
   (indexed "/Users/pedro/Developer/Nightincode/src/nightincode/server.clj")
 
 
-  (def conn (d/create-conn schema))
-
-  (def tx-report (d/transact! conn prepared))
-
-  (d/transact! conn
-    [{:file/path "a.clj"
-      :file/semthetics
-      [{:var/namespace 'person
-        :var/name 'first-name}]}])
-
-  (d/transact! conn
-    [{:file/path "b.clj"
-      :file/semthetics
-      [{:var/namespace 'person
-        :var/name 'last-name}]}])
-
-  (d/touch (d/entity (d/db conn) [:file/path "a.clj"]))
-
-  (d/transact! conn
-    [[:db/retractEntity [:file/path "a.clj"]]])
-
-  (d/transact! conn
-    [[:db/retract [:file/path "a.clj"] :file/semthetics]])
-
-  (d/transact! conn
-    [[:db/retract [:file/path "a.clj"] :file/semthetics]
-
-     {:file/path "a.clj"
-      :file/semthetics
-      [{:var/namespace 'person
-        :var/name 'firstname}]}])
-
-
-  (d/q '[:find  (pull ?v [*])
-         :where
-         [?v :var/namespace person]]
-    (d/db conn))
-
-
-
   )
