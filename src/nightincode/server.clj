@@ -254,7 +254,14 @@
 (def state-ref (atom nil))
 
 (defn set-state [f & args]
-  (swap! state-ref #(apply f % args)))
+  (let [state (swap! state-ref #(apply f % args))]
+    (when-not (s/valid? :server/state state)
+      (log/warn
+        (str "Invalid state:"
+          "\n"
+          (with-out-str (pprint/pprint state))
+          "\nExplain:\n"
+          (s/explain-str :server/state state))))))
 
 (defn _out ^Writer [state]
   (:nightincode/out state))

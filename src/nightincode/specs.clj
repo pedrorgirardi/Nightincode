@@ -70,3 +70,16 @@
 (s/def :file/path string?)
 
 (s/def :file/semthetics (s/coll-of :semthetic/semthetic))
+
+
+(s/def :LSP/InitializeParams (s/map-of string? any?))
+
+(s/def :LSP/InitializedParams (s/map-of string? any?))
+
+(s/def :LSP/document (s/map-of string? string?))
+
+(s/def :server/state
+  (s/keys
+    :opt [:LSP/InitializeParams
+          :LSP/InitializedParams
+          :LSP/document]))
