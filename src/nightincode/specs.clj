@@ -76,7 +76,14 @@
 
 (s/def :LSP/InitializedParams (s/map-of string? any?))
 
-(s/def :nightincode/document-index (s/map-of string? string?))
+(s/def :nightincode.document-index/text string?)
+
+(s/def :nightincode.document-index/version pos-int?)
+
+(s/def :nightincode/document-index
+  (s/map-of string? (s/keys
+                      :req-un [:nightincode.document-index/text]
+                      :opt-un [:nightincode.document-index/version])))
 
 (s/def :server/state
   (s/keys
