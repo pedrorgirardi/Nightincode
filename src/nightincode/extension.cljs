@@ -13,7 +13,7 @@
 (defn activate [^js context]
   (let [^js output (vscode/window.createOutputChannel "Nightincode")
 
-        server-JAR-path (path/join (.-extensionPath context) "server.jar")
+        server-JAR-path (path/join (.-extensionPath context) "nightincode.jar")
 
         server-options #js{:run #js{:command "java" :args #js["-jar", server-JAR-path]}
                            :debug #js{:command "java" :args #js["-jar", server-JAR-path]}}

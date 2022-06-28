@@ -9,3 +9,5 @@ server.jar
 LSP.jar
 .clj-kondo/
 .lsp/
+target/
+nightincode.jar
