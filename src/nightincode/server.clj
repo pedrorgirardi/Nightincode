@@ -18,6 +18,10 @@
    [nightincode.analyzer :as analyzer])
 
   (:import
+   (java.util
+    Timer
+    TimerTask)
+
    (java.util.concurrent
     ScheduledExecutorService
     Executors
@@ -37,6 +41,26 @@
 ;; to resolve Java method calls or field accesses.
 (set! *warn-on-reflection* true)
 
+(defn debounce
+  ([f] (debounce f 1000))
+  ([f timeout]
+   (let [timer (Timer.)
+         task (atom nil)]
+     (with-meta
+       (fn [& args]
+         (when-let [t ^TimerTask @task]
+           (.cancel t))
+
+         (let [new-task (proxy [TimerTask] []
+                          (run []
+                            (apply f args)
+                            (reset! task nil)
+                            (.purge timer)))]
+
+           (reset! task new-task)
+
+           (.schedule timer new-task ^long timeout)))
+       {:task-atom task}))))
 
 (def default-clj-kondo-config
   {:analysis
@@ -288,6 +312,9 @@
      :method "textDocument/publishDiagnostics"
      :params params}))
 
+(def publish-diagnostics-debounce
+  (debounce publish-diagnostics 2000))
+
 ;; ---------------------------------------------------------
 
 
@@ -428,6 +455,7 @@
        {:type 4
         :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
 
+
 (defmethod lsp/handle "shutdown" [request]
 
   ;; The shutdown request is sent from the client to the server.
@@ -541,7 +569,7 @@
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
                                                                            :version text-document-version})
 
-      (publish-diagnostics (_out @state-ref)
+      (publish-diagnostics-debounce (_out @state-ref)
           {:uri text-document-uri
            :diagnostics diagnostics})
 
