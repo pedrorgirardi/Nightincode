@@ -246,13 +246,14 @@
            :filename (.getPath (URI. uri))
            :config (or config default-clj-kondo-config)})))))
 
-(defn analyzer-paths [root-path]
+(defn config [root-path]
   (let [config-file (io/file root-path "nightincode.edn")]
     (when (.exists config-file)
-      (let [config (slurp config-file)
-            config (edn/read-string config)
-            paths (get-in config [:analyzer :paths])]
-        (map #(.getPath (io/file root-path %)) paths)))))
+      (edn/read-string (slurp config-file)))))
+
+(defn analyzer-paths [config root-path]
+  (let [paths (get-in config [:analyzer :paths])]
+    (map #(.getPath (io/file root-path %)) paths)))
 
 
 ;; ---------------------------------------------------------
@@ -300,9 +301,33 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialize
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#serverCapabilities
 
-  (let [conn (d/create-conn analyzer/schema)]
+  (let [root-path (get-in request [:params :rootPath])
 
-    (when-let [paths (analyzer-paths (get-in request [:params :rootPath]))]
+        config (config root-path)
+
+        conn (d/create-conn analyzer/schema)
+
+        paths (analyzer-paths config root-path)
+
+        capabilities (or (:capabilities config)
+                       {;; Defines how the host (editor) should sync document changes to the language server.
+                        ;;
+                        ;; 0: Documents should not be synced at all.
+                        ;; 1: Documents are synced by always sending the full content of the document.
+                        ;; 2: Documents are synced by sending the full content on open.
+                        ;;    After that only incremental updates to the document are send.
+                        ;;
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
+                        :textDocumentSync 1
+                        :definitionProvider true
+                        :referencesProvider true
+                        :documentHighlightProvider true
+                        :completionProvider {:triggerCharacters ["(" ":"]}
+                        :documentSymbolProvider true
+                        :hoverProvider true
+                        :workspaceSymbolProvider true})]
+
+    (when (seq paths)
       (let [{:keys [analysis]} (analyze {:lint paths})
 
             index (analyzer/index analysis)
@@ -313,30 +338,14 @@
 
     (set-state assoc
       :LSP/InitializeParams (:params request)
-      :nightincode/analyzer {:conn conn}))
+      :nightincode/analyzer {:conn conn})
 
-  (lsp/response request
-    {:capabilities
-     {;; Defines how the host (editor) should sync document changes to the language server.
-      ;;
-      ;; 0: Documents should not be synced at all.
-      ;; 1: Documents are synced by always sending the full content of the document.
-      ;; 2: Documents are synced by sending the full content on open.
-      ;;    After that only incremental updates to the document are send.
-      ;;
-      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
-      :textDocumentSync 1
-      :definitionProvider true
-      :referencesProvider true
-      :documentHighlightProvider true
-      :completionProvider {:triggerCharacters ["(" ":"]}
-      :documentSymbolProvider true
-      :hoverProvider true
-      :workspaceSymbolProvider true}
+    (lsp/response request
+      {:capabilities capabilities
 
-     :serverInfo
-     {:name "Nightincode"
-      :version "0.6.0-dev"}}))
+       :serverInfo
+       {:name "Nightincode"
+        :version "0.6.0-dev"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 

@@ -1,2 +1,11 @@
-{:analyzer
+{:capabilities
+ {:textDocumentSync 1
+  :definitionProvider true
+  :referencesProvider true
+  :documentHighlightProvider true
+  :documentSymbolProvider true
+  :hoverProvider true
+  :workspaceSymbolProvider true}
+
+ :analyzer
  {:paths ["src"]}}
