@@ -50,6 +50,14 @@
 (defn text-document-uri [textDocument]
   (:uri textDocument))
 
+(defn text-document-version
+  "An identifier to denote a specific version of a text document.
+  This information usually flows from the client to the server.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#versionedTextDocumentIdentifier"
+  [textDocument]
+  (:version textDocument))
+
 (defn text-document-path [textDocument]
   (.getPath (URI. (text-document-uri textDocument))))
 
@@ -254,14 +262,7 @@
 (def state-ref (atom nil))
 
 (defn set-state [f & args]
-  (let [state (swap! state-ref #(apply f % args))]
-    (when-not (s/valid? :server/state state)
-      (log/warn
-        (str "Invalid state:"
-          "\n"
-          (with-out-str (pprint/pprint state))
-          "\nExplain:\n"
-          (s/explain-str :server/state state))))))
+  (swap! state-ref #(apply f % args)))
 
 (defn _out ^Writer [state]
   (:nightincode/out state))
@@ -478,6 +479,8 @@
 
           text-document-uri (text-document-uri textDocument)
 
+          text-document-version (text-document-version textDocument)
+
           ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
           text-document-text (get-in notification [:params :contentChanges 0 :text])
 
@@ -508,7 +511,7 @@
 
       ;; Update document's persisted text.
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
-                                                                           :version 1})
+                                                                           :version text-document-version})
 
       (publish-diagnostics (_out @state-ref)
           {:uri text-document-uri
