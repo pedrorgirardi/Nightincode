@@ -316,12 +316,33 @@
                         ;;
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
                         :textDocumentSync 1
+
+                        ;; Goto Definition Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
                         :definitionProvider true
+
+                        ;; Find References Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_references
                         :referencesProvider true
+
+                        ;; Document Highlights Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
                         :documentHighlightProvider true
+
+                        ;; Completion Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
                         :completionProvider {:triggerCharacters ["(" ":"]}
+
+                        ;; Document Symbols Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol 
                         :documentSymbolProvider true
+
+                        ;; Hover Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
                         :hoverProvider true
+
+                        ;; Workspace Symbols Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})]
 
     (when (seq paths)
