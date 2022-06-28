@@ -406,8 +406,9 @@
     (lsp/write (_out @state-ref)
       {:jsonrpc "2.0"
        :method "window/logMessage"
-       :params {:type 4
-                :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
+       :params
+       {:type 4
+        :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
 
 (defmethod lsp/handle "shutdown" [request]
 
