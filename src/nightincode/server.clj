@@ -283,13 +283,10 @@
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_publishDiagnostics"
   [out params]
-  (try
-    (lsp/write out
-      {:jsonrpc "2.0"
-       :method "textDocument/publishDiagnostics"
-       :params params})
-    (catch Exception ex
-      (log/error ex "Nightincode failed to publish diagnostics."))))
+  (lsp/write out
+    {:jsonrpc "2.0"
+     :method "textDocument/publishDiagnostics"
+     :params params}))
 
 ;; ---------------------------------------------------------
 
