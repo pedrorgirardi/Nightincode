@@ -451,7 +451,7 @@
           diagnostics (diagnostics findings)]
 
       ;; Persist in-memory document's text.
-      (set-state assoc-in [:LSP/document text-document-uri] text-document-text)
+      (set-state assoc-in [:nightincode/document-index text-document-uri] text-document-text)
 
       ;; Publish clj-kondo findings:
       ;; (Findings are encoded as LSP Diagnostics)
@@ -507,7 +507,7 @@
       (d/transact! conn tx-data)
 
       ;; Update document's persisted text.
-      (set-state assoc-in [:LSP/document text-document-uri] text-document-text)
+      (set-state assoc-in [:nightincode/document-index text-document-uri] text-document-text)
 
       (publish-diagnostics (_out @state-ref)
           {:uri text-document-uri
@@ -541,7 +541,7 @@
           text-document-uri (text-document-uri textDocument)]
 
       ;; Clear document's persisted text.
-      (set-state update :LSP/document dissoc text-document-uri)
+      (set-state update :nightincode/document-index dissoc text-document-uri)
 
       ;; Clear diagnostics.
       (publish-diagnostics (_out @state-ref)
