@@ -48,8 +48,14 @@
          task (atom nil)]
      (fn [& args]
        (when-let [t @task]
+         ;; Cancels this timer task. 
+         ;; If the task has been scheduled for one-time execution and has not yet run, 
+         ;; or has not yet been scheduled, it will never run. 
          (.cancel ^TimerTask t)
 
+         ;; Removes all cancelled tasks from this timer's task queue. 
+         ;; Calling this method has no effect on the behavior of the timer, 
+         ;; but eliminates the references to the cancelled tasks from the queue.
          (.purge ^Timer timer))
 
        (let [new-task (proxy [TimerTask] []
@@ -58,6 +64,7 @@
 
          (reset! task new-task)
 
+         ;; Schedules the specified task for execution after the specified delay.
          (.schedule timer new-task ^long delay))))))
 
 (def default-clj-kondo-config
