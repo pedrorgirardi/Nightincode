@@ -43,24 +43,22 @@
 
 (defn debounce
   ([f] (debounce f 1000))
-  ([f timeout]
+  ([f delay]
    (let [timer (Timer.)
          task (atom nil)]
-     (with-meta
-       (fn [& args]
-         (when-let [t ^TimerTask @task]
-           (.cancel t))
+     (fn [& args]
+       (when-let [t @task]
+         (.cancel ^TimerTask t)
 
-         (let [new-task (proxy [TimerTask] []
-                          (run []
-                            (apply f args)
-                            (reset! task nil)
-                            (.purge timer)))]
+         (.purge ^Timer timer))
 
-           (reset! task new-task)
+       (let [new-task (proxy [TimerTask] []
+                        (run []
+                          (apply f args)))]
 
-           (.schedule timer new-task ^long timeout)))
-       {:task-atom task}))))
+         (reset! task new-task)
+
+         (.schedule timer new-task ^long delay))))))
 
 (def default-clj-kondo-config
   {:analysis
@@ -312,8 +310,44 @@
      :method "textDocument/publishDiagnostics"
      :params params}))
 
-(def publish-diagnostics-debounce
-  (debounce publish-diagnostics 2000))
+(def process-text-change
+  (debounce
+    (fn [{:keys [conn out uri text]}]
+      (try
+        (let [{:keys [analysis findings]} (analyze-text {:uri uri
+                                                         :text text})
+
+              index (analyzer/index analysis)
+
+              ;; Note:
+              ;; Retract file entities before adding new ones.
+              ;; Old Semthetics are retracted because `:file/semthetics` is a component.
+              ;;
+              ;; TODO: Investigate if there's a better way to update - retract & add.
+
+              tx-data (into []
+                        (map
+                          (fn [[filename _]]
+                            [:db/retractEntity [:file/path filename]]))
+                        index)
+
+              tx-data (into tx-data (analyzer/prepare-semthetics index))
+
+              diagnostics (diagnostics findings)]
+
+          (d/transact! conn tx-data)
+
+          (publish-diagnostics out
+            {:uri uri
+             :diagnostics diagnostics})
+
+          (log/debug
+            (format "Publish diagnostics %s\n%s" uri
+              (with-out-str (pprint/pprint diagnostics)))))
+
+        (catch Exception ex
+          (log/error ex "Processing text change error. Document:" uri))))))
+
 
 ;; ---------------------------------------------------------
 
@@ -540,42 +574,22 @@
           ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
           text-document-text (get-in notification [:params :contentChanges 0 :text])
 
-          {:keys [analysis findings]} (analyze-text {:uri text-document-uri
-                                                     :text text-document-text})
-
-          index (analyzer/index analysis)
-
-          ;; Note:
-          ;; Retract file entities before adding new ones.
-          ;; Old Semthetics are retracted because `:file/semthetics` is a component.
-          ;;
-          ;; TODO: Investigate if there's a better way to update - retract & add.
-
-          tx-data (into []
-                    (map
-                      (fn [[filename _]]
-                        [:db/retractEntity [:file/path filename]]))
-                    index)
-
-          tx-data (into tx-data (analyzer/prepare-semthetics index))
-
-          conn (_analyzer-conn @state-ref)
-
-          diagnostics (diagnostics findings)]
-
-      (d/transact! conn tx-data)
+          out (_out @state-ref)]
 
       ;; Update document's persisted text.
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
                                                                            :version text-document-version})
 
-      (publish-diagnostics-debounce (_out @state-ref)
-          {:uri text-document-uri
-           :diagnostics diagnostics})
+      ;; Clear diagnostics.
+      (publish-diagnostics out
+        {:uri text-document-uri
+         :diagnostics []})
 
-      (log/debug
-        (format "Publish diagnostics %s\n%s" text-document-uri
-          (with-out-str (pprint/pprint diagnostics)))))
+      (process-text-change
+        {:uri text-document-uri
+         :text text-document-text
+         :conn (_analyzer-conn @state-ref)
+         :out out}))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didChange"))))
