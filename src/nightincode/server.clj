@@ -398,13 +398,13 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
                         :documentHighlightProvider true
 
-                        ;; Document Symbols Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol 
-                        :documentSymbolProvider true
-
                         ;; Hover Request
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
                         :hoverProvider true
+
+                        ;; Document Symbols Request
+                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
+                        :documentSymbolProvider true
 
                         ;; Workspace Symbols Request
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
