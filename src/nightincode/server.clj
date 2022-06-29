@@ -42,6 +42,7 @@
 (set! *warn-on-reflection* true)
 
 (defn debounce
+  "Copied from https://gist.github.com/oliyh/0c1da9beab43766ae2a6abc9507e732a."
   ([f] (debounce f 1000))
   ([f delay]
    (let [timer (Timer.)
