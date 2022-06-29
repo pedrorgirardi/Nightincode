@@ -398,10 +398,6 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
                         :documentHighlightProvider true
 
-                        ;; Completion Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-                        :completionProvider {:triggerCharacters ["(" ":"]}
-
                         ;; Document Symbols Request
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol 
                         :documentSymbolProvider true
@@ -767,61 +763,6 @@
          (format "Nightincode failed to find highlights. (%s)\n"
            (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
-(defmethod lsp/handle "textDocument/completion" [request]
-
-  ;; The Completion request is sent from the client to the server to compute completion items at a given cursor position.
-  ;;
-  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-
-  (try
-    (let [textDocument (get-in request [:params :textDocument])
-
-          cursor-position (get-in request [:params :position])
-          cursor-line (get-in request [:params :position :line])
-          cursor-character (get-in request [:params :position :character])
-
-          filename (text-document-path textDocument)
-
-          db (d/db (_analyzer-conn @state-ref))
-
-          cursor-semthetic (analyzer/?cursor-semthetic db
-                             {:filename (text-document-path textDocument)
-                              :row (inc cursor-line)
-                              :col (inc cursor-character)
-                              :col-end (inc cursor-character)})
-
-          semthetics (d/q '[:find [(pull ?e [*]) ...]
-                            :in $ ?filename [?semantic ...] [?modifier ...]
-                            :where
-                            [?e :semthetic/filename ?filename]
-                            [?e :semthetic/semantic ?semantic]
-                            [?e :semthetic/modifier ?modifier]]
-                       db filename [:var :keyword] [:def :usage])
-
-          completions (into #{}
-                        (map
-                          (fn [semthetic]
-                            {:label (semthetic-label semthetic)
-                            
-                              ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#completionItemKind
-                             :kind 6}))
-                        semthetics)]
-
-      (lsp/response request
-        (when (seq completions)
-          (merge {:items completions}
-            (when cursor-semthetic
-              {:itemDefaults
-               {:editRange
-                (analyzer/loc-range
-                  (analyzer/cursor-loc cursor-semthetic cursor-position))}})))))
-    (catch Exception ex
-      (log/error ex "Error: textDocument/completion")
-
-      (lsp/error-response request
-        {:code -32803
-         :message (format "Nightincode failed to compute completions. (%s)" (ex-message ex))}))))
-
 (defmethod lsp/handle "textDocument/documentSymbol" [request]
 
   ;; The document symbol request is sent from the client to the server.
@@ -983,18 +924,6 @@
 (comment
 
   (keys @state-ref)
-
-
-  (lsp/handle
-    {:method "textDocument/completion"
-     :params
-     {:textDocument
-      {:uri "file:///Users/pedro/Developer/lispi/src/lispi/core.clj"}
-
-      :position
-      {:line 119
-       :character 40}}})
-
 
 
   (lsp/write (_out @state-ref)
