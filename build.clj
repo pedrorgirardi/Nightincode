@@ -10,7 +10,11 @@
   (b/delete {:path "target"}))
 
 (defn uber [_]
+  (println "Cleaning 🧹")
+
   (clean nil)
+
+  (println "Packaging... 🕜")
 
   (b/copy-dir {:src-dirs ["src" "resources"]
                :target-dir class-dir})
@@ -22,4 +26,6 @@
   (b/uber {:class-dir class-dir
            :uber-file "nightincode.jar"
            :basis basis
-           :main 'nightincode.server}))
+           :main 'nightincode.server})
+
+  (println "Packaged Uberjar 📦"))

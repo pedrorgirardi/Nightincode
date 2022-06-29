@@ -18,3 +18,8 @@ node_modules/
 Nightincode.sublime-project
 Nightincode.sublime-workspace
 deps.edn
+target/
+dev/
+resources/
+nightincode.edn
+build.clj

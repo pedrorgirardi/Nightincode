@@ -17,17 +17,4 @@
    :ns-default build}
 
   :test
-  {:extra-paths ["test"]}
-
-  :start
-  {:exec-fn nightincode.server/start}
-
-  :jar
-  {:replace-deps {com.github.seancorfield/depstar {:mvn/version "2.1.303"}}
-   :exec-fn hf.depstar/uberjar
-   :exec-args {:main-class nightincode.server
-               :exec-fn hf.depstar/uberjar
-               :jar server.jar
-               :aot true}
-   :jvm-opts     ["-Dclojure.compiler.direct-linking=true"
-                  "-Dclojure.spec.skip-macros=true"]}}}
+  {:extra-paths ["test"]}}}
