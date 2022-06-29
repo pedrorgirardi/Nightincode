@@ -580,11 +580,12 @@
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
                                                                            :version text-document-version})
 
-      ;; Clear diagnostics.
+      ;; Clear diagnostics as soon as the document changes.
       (publish-diagnostics out
         {:uri text-document-uri
          :diagnostics []})
 
+      ;; Text change processing and diagnostics is debounced.
       (process-text-change
         {:uri text-document-uri
          :text text-document-text
