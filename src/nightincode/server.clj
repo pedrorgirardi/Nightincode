@@ -918,7 +918,7 @@
 (defn -main [& _]
   (start
     {:in System/in
-     :out (lsp/buffered-writer System/out)}))
+     :out (BufferedWriter. (OutputStreamWriter. System/out "UTF-8"))}))
 
 
 (comment
