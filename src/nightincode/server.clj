@@ -29,7 +29,9 @@
 
    (java.io
     Writer
-    PrintWriter)
+    PrintWriter
+    BufferedWriter
+    OutputStreamWriter)
 
    (java.net
     ServerSocket
@@ -428,7 +430,7 @@
 
        :serverInfo
        {:name "Nightincode"
-        :version "0.6.0-dev"}})))
+        :version "0.6.0"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 
