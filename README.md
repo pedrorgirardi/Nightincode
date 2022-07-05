@@ -1,1 +1,1 @@
-**Nightincode** is an experimental Visual Studio Code extension and language server for Clojure & ClojureScript.
+**Nightincode** is an experimental Visual Studio Code extension and [language server](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/) for Clojure & ClojureScript.
