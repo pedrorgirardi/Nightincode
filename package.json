@@ -84,6 +84,6 @@
     "shadow-cljs": "^2.19.8"
   },
   "dependencies": {
-    "vscode-languageclient": "^8.0.1"
+    "vscode-languageclient": "^8.0.2"
   }
 }
