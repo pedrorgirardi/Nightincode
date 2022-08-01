@@ -81,7 +81,7 @@
     "release": "npx shadow-cljs release :extension"
   },
   "devDependencies": {
-    "shadow-cljs": "^2.19.3"
+    "shadow-cljs": "^2.19.8"
   },
   "dependencies": {
     "vscode-languageclient": "^8.0.1"
