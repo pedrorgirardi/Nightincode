@@ -29,9 +29,7 @@
 
    (java.io
     Writer
-    PrintWriter
-    BufferedWriter
-    OutputStreamWriter)
+    PrintWriter)
 
    (java.net
     ServerSocket
@@ -920,7 +918,7 @@
 (defn -main [& _]
   (start
     {:in System/in
-     :out (BufferedWriter. (OutputStreamWriter. System/out "UTF-8"))}))
+     :out System/out}))
 
 
 (comment
