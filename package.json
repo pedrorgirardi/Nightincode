@@ -23,9 +23,6 @@
     "Clojure",
     "ClojureScript"
   ],
-  "activationEvents": [
-    "onLanguage:clojure"
-  ],
   "main": "./extension.js",
   "contributes": {
     "configurationDefaults": {
