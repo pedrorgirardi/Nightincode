@@ -2,7 +2,7 @@
   "name": "nightincode",
   "displayName": "Nightincode",
   "description": "Elemental Clojure/Script support for Visual Studio Code.",
-  "version": "0.7.0",
+  "version": "0.8.0-dev",
   "publisher": "pedrorgirardi",
   "author": {
     "name": "Pedro Girardi",
