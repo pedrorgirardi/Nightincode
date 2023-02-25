@@ -8,4 +8,4 @@
   :workspaceSymbolProvider true}
 
  :analyzer
- {:paths ["src"]}}
+ {:paths ["src" "dev"]}}
