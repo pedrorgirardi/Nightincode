@@ -502,6 +502,8 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#shutdown
 
+  (log/debug "Request to shutdown")
+
   (set-state assoc :nightincode/shutdown? true)
 
   (lsp/response request nil))
@@ -512,6 +514,8 @@
   ;; The server should exit with success code 0 if the shutdown request has been received before; otherwise with error code 1.
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#exit
+
+  (log/debug "Notification to exit")
 
   (System/exit (if (:nightincode/shutdown? @state-ref)
                  0
