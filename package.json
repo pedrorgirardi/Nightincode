@@ -76,7 +76,8 @@
     "clean": "rm -rf .shadow-cljs/",
     "watch": "npx shadow-cljs watch :extension",
     "compile": "npx shadow-cljs compile :extension",
-    "release": "npx shadow-cljs release :extension"
+    "release": "npx shadow-cljs release :extension",
+    "package": "npx vsce package"
   },
   "devDependencies": {
     "shadow-cljs": "^2.24.1"
