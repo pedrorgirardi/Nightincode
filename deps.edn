@@ -15,7 +15,7 @@
  :aliases
  {:build
   {:deps {io.github.clojure/tools.build {:git/tag "v0.9.4"
-                                         :git/sha "8c3cd69"}}
+                                         :git/sha "76b78fe"}}
    :ns-default build}
 
   :test
