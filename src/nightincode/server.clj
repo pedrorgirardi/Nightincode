@@ -11,10 +11,10 @@
    [clojure.pprint :as pprint]
 
    [clj-kondo.core :as clj-kondo]
-   [lspie.api :as lsp]
    [datascript.core :as d]
 
    [nightincode.specs]
+   [nightincode.lsp :as lsp]
    [nightincode.analyzer :as analyzer])
 
   (:import
