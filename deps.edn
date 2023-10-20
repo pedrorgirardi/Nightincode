@@ -12,8 +12,8 @@
 
  :aliases
  {:build
-  {:deps {io.github.clojure/tools.build {:git/tag "v0.9.5"
-                                         :git/sha "24f2894"}}
+  {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6"
+                                         :git/sha "8e78bcc"}}
    :ns-default build}
 
   :test
