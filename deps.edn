@@ -11,13 +11,21 @@
   clj-kondo/clj-kondo {:mvn/version "2023.10.20"}}
 
  :aliases
- {:build
+ {:repl
+  {:jvm-opts ["-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}
+
+  :build
   {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6"
                                          :git/sha "8e78bcc"}}
    :ns-default build}
 
+  :dev
+  {:extra-paths ["dev"]
+   :extra-deps
+   {org.clojure/test.check {:mvn/version "1.1.1"}}}
+
   :test
-  {:extra-paths ["test"]}
+   {:extra-paths ["test"]}
 
   :test-runner
   {:extra-deps
