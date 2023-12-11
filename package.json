@@ -80,7 +80,7 @@
     "package": "npx vsce package"
   },
   "devDependencies": {
-    "shadow-cljs": "^2.25.8"
+    "shadow-cljs": "^2.26.2"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
