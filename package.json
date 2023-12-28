@@ -77,7 +77,7 @@
     "watch": "npx shadow-cljs watch :extension",
     "compile": "npx shadow-cljs compile :extension",
     "release": "npx shadow-cljs release :extension",
-    "package": "npx vsce package"
+    "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
     "shadow-cljs": "^2.26.2"
