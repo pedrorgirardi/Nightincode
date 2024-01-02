@@ -1,9 +1,26 @@
 (ns dev
   (:require
+   [clojure.tools.deps :as deps]
+
    [nightincode.server :as server]
    [datascript.core :as d]))
 
 (comment
+
+  (def basis
+    (deps/create-basis
+      {:projet "/Users/pedro/Developer/Nightincode/deps.edn"}))
+
+  (:argmap basis)
+  (:classpath-roots basis)
+
+  (deps/calc-basis basis)
+
+  (deps/print-tree (:libs basis))
+
+
+  ;; ---
+
 
   (keys @server/state-ref)
   ;; =>
