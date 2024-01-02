@@ -384,6 +384,10 @@
 
         conn (d/create-conn analyzer/schema)
 
+        ;; TODO:
+        ;; Document Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting
+        ;; Document Range Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting
+
         capabilities (or (:capabilities config)
                        {;; Defines how the host (editor) should sync document changes to the language server.
                         ;;
