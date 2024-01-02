@@ -534,9 +534,19 @@
                  1)))
 
 (defmethod lsp/handle "$/cancelRequest" [_]
+
+  ;; The base protocol offers support for request cancellation.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#cancelRequest
+
   nil)
 
 (defmethod lsp/handle "$/setTrace" [_]
+
+  ;; A notification that should be used by the client to modify the trace setting of the server.
+  ;;
+  ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#setTrace
+
   nil)
 
 
