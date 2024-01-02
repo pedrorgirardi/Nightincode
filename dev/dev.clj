@@ -1,11 +1,15 @@
 (ns dev
   (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
    [clojure.tools.deps :as deps]
 
    [nightincode.server :as server]
    [datascript.core :as d]))
 
 (comment
+
+  (io/file "/Users/pedro/Developer/Nightincode" "deps.edn")
 
   (def basis
     (deps/create-basis
@@ -17,6 +21,9 @@
   (deps/calc-basis basis)
 
   (deps/print-tree (:libs basis))
+
+  (str/join ":" (:classpath-roots basis))
+
 
 
   ;; ---

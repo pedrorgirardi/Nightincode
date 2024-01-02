@@ -9,6 +9,7 @@
    [clojure.stacktrace :as stacktrace]
    [clojure.spec.alpha :as s]
    [clojure.pprint :as pprint]
+   [clojure.tools.deps :as deps]
 
    [clj-kondo.core :as clj-kondo]
    [datascript.core :as d]
@@ -373,8 +374,6 @@
 
         conn (d/create-conn analyzer/schema)
 
-        paths (analyzer-paths config root-path)
-
         capabilities (or (:capabilities config)
                        {;; Defines how the host (editor) should sync document changes to the language server.
                         ;;
@@ -408,7 +407,10 @@
 
                         ;; Workspace Symbols Request
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
-                        :workspaceSymbolProvider true})]
+                        :workspaceSymbolProvider true})
+
+        {paths :classpath-roots } (deps/create-basis
+                                    {:projet (io/file root-path "deps.edn")})]
 
     (when (seq paths)
       (let [{:keys [analysis]} (analyze {:lint paths})
