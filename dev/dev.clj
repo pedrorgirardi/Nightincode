@@ -9,7 +9,15 @@
 
 (comment
 
-  (io/file "/Users/pedro/Developer/Nightincode" "deps.edn")
+  (def deps-file
+    (io/file "/Users/pedro/Developer/Nightincode" "deps.edn"))
+
+  (let [deps-map (deps/slurp-deps deps-file)]
+    (reduce-kv
+      (fn [paths _ {:keys [extra-paths]}]
+        (into paths extra-paths))
+      (:paths deps-map [])
+      (:aliases deps-map)))
 
   (def basis
     (deps/create-basis

@@ -258,11 +258,19 @@
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
-      (let [{:keys [classpath-roots]} (deps/create-basis
-                                        {:projet (io/file root-path "deps.edn")})]
-        (clj-kondo/run!
-          {:lint classpath-roots
-           :config (or config default-clj-kondo-config)})))))
+
+      #_#_{:keys [classpath-roots]} (deps/create-basis
+                                        {:projet (io/file root-path "deps.edn")})
+
+      (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
+        (let [paths (reduce-kv
+                      (fn [paths _ {:keys [extra-paths]}]
+                        (into paths extra-paths))
+                      (:paths deps-map [])
+                      (:aliases deps-map))]
+          (clj-kondo/run!
+            {:lint paths
+             :config (or config default-clj-kondo-config)}))))))
 
 (defn analyze-text
   "Analyze Clojure/Script forms with clj-kondo.
