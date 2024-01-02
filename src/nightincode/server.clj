@@ -253,14 +253,16 @@
 
 (defn analyze
   "Analyze Clojure/Script forms with clj-kondo."
-  [{:keys [config lint]}]
+  [{:keys [config root-path]}]
   (with-open [noop-out (PrintWriter. (Writer/nullWriter))
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
-      (clj-kondo/run!
-        {:lint lint
-         :config (or config default-clj-kondo-config)}))))
+      (let [{:keys [classpath-roots]} (deps/create-basis
+                                        {:projet (io/file root-path "deps.edn")})]
+        (clj-kondo/run!
+          {:lint classpath-roots
+           :config (or config default-clj-kondo-config)})))))
 
 (defn analyze-text
   "Analyze Clojure/Script forms with clj-kondo.
@@ -409,17 +411,13 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})
 
-        {paths :classpath-roots } (deps/create-basis
-                                    {:projet (io/file root-path "deps.edn")})]
+        {:keys [analysis]} (analyze {:root-path root-path})
 
-    (when (seq paths)
-      (let [{:keys [analysis]} (analyze {:lint paths})
+        index (analyzer/index analysis)
 
-            index (analyzer/index analysis)
+        tx-data (analyzer/prepare-semthetics index)]
 
-            tx-data (analyzer/prepare-semthetics index)]
-
-        (d/transact! conn tx-data)))
+    (d/transact! conn tx-data)
 
     (set-state assoc
       :LSP/InitializeParams (:params request)
