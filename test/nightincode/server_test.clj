@@ -19,3 +19,7 @@
         (server/deps-paths
           (deps/slurp-deps
             (io/file "foo.edn"))))))
+
+(deftest uri->diagnostics-test
+  (is (= {} (server/uri->diagnostics nil)))
+  (is (= {} (server/uri->diagnostics []))))

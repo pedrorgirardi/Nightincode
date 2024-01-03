@@ -48,10 +48,21 @@
     :nightincode/probe
     :nightincode/out
     :nightincode/in
-    :LSP/InitializeParams
     :nightincode/probe-executor
     :nightincode/document-index
+    :nightincode/diagnostics
+    :LSP/InitializeParams
     :LSP/InitializedParams)
+
+
+  (server/_diagnostics @server/state-ref)
+  ;; =>
+  {"file:///Users/pedro/Developer/Nightincode/test/example1.cljc"
+   [{:range {:start {:line 11 :character 5} :end {:line 11 :character 8}}
+     :source "Nightincode"
+     :message "Expected: number, received: string."
+     :severity 1}]}
+
 
 
   (:LSP/InitializeParams @server/state-ref)

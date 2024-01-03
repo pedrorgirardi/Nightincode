@@ -99,7 +99,9 @@
   (->  (io/file filepath) .toPath .toUri))
 
 (defn diagnostic
-  "Returns a Diagnostic for a clj-kondo finding."
+  "Returns a Diagnostic for a clj-kondo finding.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
   [{:keys [row
            end-row
            col
@@ -124,20 +126,23 @@
 
      3)})
 
-(defn diagnostics [findings]
-  (into []
-    (comp
-      (filter
-        (fn [finding]
-          (or (s/valid? :clj-kondo/finding finding)
-            (log/warn
-              (str "Invalid Finding:"
-                "\n"
-                (with-out-str (pprint/pprint finding))
-                "\nExplain:\n"
-                (s/explain-str :clj-kondo/finding finding))))))
-      (map diagnostic))
-    findings))
+(defn uri->diagnostics
+  "Returns a map of URI to Diagnostics.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
+  [findings]
+  (group-by
+    (comp :uri meta)
+    (into []
+      (comp
+        (filter
+          (fn [finding]
+            (s/valid? :clj-kondo/finding finding)))
+        (map
+          (fn [finding]
+            (with-meta (diagnostic finding)
+              {:uri (.toString (filepath-uri (:filename finding)))}))))
+      findings)))
 
 (defn semthetic-markdown
   [semthetic]
@@ -334,6 +339,9 @@
 (defn _analyzer-conn [state]
   (get-in state [:nightincode/analyzer :conn]))
 
+(defn _diagnostics [state]
+  (:nightincode/diagnostics state))
+
 (defn publish-diagnostics
   "Diagnostics notification are sent from the server to the client to signal results of validation runs.
 
@@ -367,17 +375,34 @@
 
               tx-data (into tx-data (analyzer/prepare-semthetics index))
 
-              diagnostics (diagnostics findings)]
+              diagnostics (uri->diagnostics findings)]
+
+          (log/info (str "\n" (with-out-str (pprint/pprint diagnostics))))
 
           (d/transact! conn tx-data)
 
-          (publish-diagnostics out
-            {:uri uri
-             :diagnostics diagnostics})
+          (cond
+            (seq diagnostics)
+            (do
+              (set-state assoc
+                :nightincode/diagnostics (merge (_diagnostics @state-ref) diagnostics))
 
-          (log/debug
-            (format "Publish diagnostics %s\n%s" uri
-              (with-out-str (pprint/pprint diagnostics)))))
+              (doseq [[uri diagnostics] diagnostics]
+                (publish-diagnostics (_out @state-ref)
+                  {:uri uri
+                   :diagnostics diagnostics})))
+
+            ;; The server must 'clear' diagnostics for `uri`:
+            ;; - server's state must be updated to reset diagnostics for `uri`
+            ;; - server must publish diagnostics to 'clear' client side diagnostics for `uri`
+            :else
+            (do
+              (set-state update
+                :nightincode/diagnostics assoc uri [])
+
+              (publish-diagnostics (_out @state-ref)
+                {:uri uri
+                 :diagnostics []}))))
 
         (catch Exception ex
           (log/error ex "Processing text change error. Document:" uri))))))
@@ -441,9 +466,16 @@
     ;; Analyze & transact Semthetics:
     ;; (If there's a deps.edn at root-path.)
     (when-let [result (analyze-root-path {:root-path root-path})]
-      (let [index (analyzer/index (:analysis result))
+      (let [{:keys [findings analysis]} result
+
+            index (analyzer/index analysis)
+
             tx-data (analyzer/prepare-semthetics index)]
-        (d/transact! conn tx-data)))
+
+        (d/transact! conn tx-data)
+
+        (set-state assoc
+          :nightincode/diagnostics (uri->diagnostics findings))))
 
     (set-state assoc
       :LSP/InitializeParams (:params request)
@@ -517,7 +549,13 @@
        :method "window/logMessage"
        :params
        {:type 4
-        :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})))
+        :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})
+
+    ;; Publish diagnostics:
+    (doseq [[uri diagnostics] (_diagnostics @state-ref)]
+      (publish-diagnostics (_out @state-ref)
+        {:uri uri
+         :diagnostics diagnostics}))))
 
 
 (defmethod lsp/handle "shutdown" [request]
@@ -585,27 +623,10 @@
     (let [textDocument (get-in notification [:params :textDocument])
 
           text-document-uri (text-document-uri textDocument)
-          text-document-text (text-document-text textDocument)
-
-          result (analyze-text {:uri text-document-uri
-                                :text text-document-text})
-
-          {:keys [findings]} result
-
-          diagnostics (diagnostics findings)]
+          text-document-text (text-document-text textDocument)]
 
       ;; Persist in-memory document's text.
-      (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text})
-
-      ;; Publish clj-kondo findings:
-      ;; (Findings are encoded as LSP Diagnostics)
-      (publish-diagnostics (_out @state-ref)
-        {:uri text-document-uri
-         :diagnostics diagnostics})
-
-      (log/debug
-        (format "Publish diagnostics %s\n%s" text-document-uri
-          (with-out-str (pprint/pprint diagnostics)))))
+      (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text}))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didOpen"))))
@@ -632,11 +653,6 @@
       ;; Update document's persisted text.
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
                                                                            :version text-document-version})
-
-      ;; Clear diagnostics as soon as the document changes.
-      (publish-diagnostics out
-        {:uri text-document-uri
-         :diagnostics []})
 
       ;; Text change processing and diagnostics is debounced.
       (process-text-change
@@ -669,14 +685,7 @@
           text-document-uri (text-document-uri textDocument)]
 
       ;; Clear document's persisted text.
-      (set-state update :nightincode/document-index dissoc text-document-uri)
-
-      ;; Clear diagnostics.
-      (publish-diagnostics (_out @state-ref)
-        {:uri text-document-uri
-         :diagnostics []})
-
-      (log/debug "Clear diagnostics" text-document-uri))
+      (set-state update :nightincode/document-index dissoc text-document-uri))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didClose"))))
