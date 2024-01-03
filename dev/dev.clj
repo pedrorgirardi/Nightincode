@@ -42,17 +42,6 @@
 
 
   (keys @server/state-ref)
-  ;; =>
-  '(:nightincode/repl-server-socket
-    :nightincode/analyzer
-    :nightincode/probe
-    :nightincode/out
-    :nightincode/in
-    :nightincode/probe-executor
-    :nightincode/document-index
-    :nightincode/diagnostics
-    :LSP/InitializeParams
-    :LSP/InitializedParams)
 
 
   (server/_diagnostics @server/state-ref)
@@ -65,7 +54,7 @@
 
 
 
-  (:LSP/InitializeParams @server/state-ref)
+  (:lsp/InitializeParams @server/state-ref)
   ;; =>
   {:processId 26872
    :clientInfo {:name "Visual Studio Code" :version "1.85.1"}

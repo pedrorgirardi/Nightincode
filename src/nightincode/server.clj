@@ -335,7 +335,7 @@
     (.getLocalPort server-socket)))
 
 (defn _root-path [state]
-  (get-in state [:LSP/InitializeParams :rootPath]))
+  (get-in state [:lsp/InitializeParams :rootPath]))
 
 (defn _analyzer-conn [state]
   (get-in state [:nightincode/analyzer :conn]))
@@ -478,12 +478,12 @@
                                                   {:nightincode/diagnostics diagnostics}))))
 
         initialized (set-state assoc
-                      :LSP/InitializeParams (:params request)
+                      :lsp/InitializeParams (:params request)
                       :nightincode/analyzer {:conn conn}
                       :nightincode/diagnostics diagnostics)]
 
-    (when-not (s/valid? :server.state/initialized initialized)
-      (log/warn (lingo/explain-str :server.state/initialized initialized)))
+    (when-not (s/valid? :nightincode.state/initialized initialized)
+      (log/warn (lingo/explain-str :nightincode.state/initialized initialized)))
 
     (lsp/response request
       {:capabilities capabilities
@@ -499,7 +499,7 @@
   ;;
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-  (let [probe-state (when-let [pid (get-in @state-ref [:LSP/InitializeParams :processId])]
+  (let [probe-state (when-let [pid (get-in @state-ref [:lsp/InitializeParams :processId])]
 
                       ;; Nightincode needs to check frequently if the parent process is still alive.
                       ;; A client e.g. Visual Studio Code should ask the server to exit, but that might not happen.
@@ -544,7 +544,7 @@
                         {:nightincode/probe-executor executor
                          :nightincode/probe probe}))]
 
-    (set-state merge {:LSP/InitializedParams (:params notification)} probe-state)
+    (set-state merge {:lsp/InitializedParams (:params notification)} probe-state)
 
     ;; Log a welcome message in the client.
     (lsp/write (_out @state-ref)

@@ -22,7 +22,7 @@
 (s/def :lsp.InitializeParams/trace (s/nilable :lsp/TraceValue))
 (s/def :lsp.InitializeParams/clientInfo (s/nilable map?))
 (s/def :lsp.InitializeParams/capabilities (s/nilable map?))
-(s/def :LSP/InitializeParams
+(s/def :lsp/InitializeParams
   (s/keys
     :req-un [:lsp.InitializeParams/processId
              :lsp.InitializeParams/rootUri
@@ -36,7 +36,7 @@
 ;; -- InitializedParams
 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
 
-(s/def :LSP/InitializedParams any?)
+(s/def :lsp/InitializedParams any?)
 
 
 ;; -- Position
@@ -172,25 +172,19 @@
 
 (s/def :nightincode/analyzer map?)
 
-(s/def :server/state
+
+;; -- State
+
+(s/def :nightincode/state
   (s/keys
-    :opt [:LSP/InitializeParams
-          :LSP/InitializedParams
+    :opt [:lsp/InitializeParams
+          :lsp/InitializedParams
           :nightincode/document-index
           :nightincode/diagnostics
           :nightincode/analyzer]))
 
-(s/def :server.state/initialized
+(s/def :nightincode.state/initialized
   (s/keys
-    :req [:LSP/InitializeParams
+    :req [:lsp/InitializeParams
           :nightincode/analyzer]
     :opt [:nightincode/diagnostics]))
-
-
-(comment
-
-  (require '[exoscale.lingo :as lingo])
-
-  (lingo/explain :lsp.Position/line -1)
-
-  )
