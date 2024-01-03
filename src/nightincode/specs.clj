@@ -2,6 +2,58 @@
   (:require
    [clojure.spec.alpha :as s]))
 
+;; -- LSP
+
+;; -- Position
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position
+
+(s/def :lsp.position/line nat-int?)
+(s/def :lsp.position/character nat-int?)
+(s/def :lsp/Position
+  (s/keys
+    :req-un [:lsp.position/line
+             :lsp.position/character]))
+
+
+;; -- Range
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range
+
+(s/def :lsp.range/start :lsp/Position)
+(s/def :lsp.range/end :lsp/Position)
+(s/def :lsp/Range
+  (s/keys
+    :req-un [:lsp.range/start
+             :lsp.range/end]))
+
+
+;; -- Diagnostic
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic
+
+(s/def :lsp.diagnostic/range :lsp/Range)
+(s/def :lsp.diagnostic/code (s/or :ineteger int? :string string?))
+(s/def :lsp.diagnostic/source string?)
+(s/def :lsp.diagnostic/message string?)
+
+;; See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
+(s/def :lsp.diagnostic/severity
+  #{;; Error
+    1
+    ;; Warning
+    2
+    ;; Information
+    3
+    ;; Hint
+    4})
+
+(s/def :lsp/Diagnostic
+  (s/keys
+    :req-un [:lsp.diagnostic/message
+             :lsp.diagnostic/range]
+    :opt-un [:lsp.diagnostic/code
+             :lsp.diagnostic/source
+             :lsp.diagnostic/severity]))
+
+
 ;; -- clj-kondo Finding
 
 (s/def :clj-kondo.finding/row pos-int?)
@@ -85,8 +137,21 @@
                       :req-un [:nightincode.document-index/text]
                       :opt-un [:nightincode.document-index/version])))
 
+(s/def :nightincode/diagnostics
+  (s/map-of string? (s/coll-of :lsp/Diagnostic)))
+
 (s/def :server/state
   (s/keys
     :opt [:LSP/InitializeParams
           :LSP/InitializedParams
-          :nightincode/document-index]))
+          :nightincode/document-index
+          :nightincode/diagnostics]))
+
+
+(comment
+
+  (require '[exoscale.lingo :as lingo])
+
+  (lingo/explain :lsp.position/line -1)
+
+  )
