@@ -31,11 +31,16 @@
     :db/isComponent true}})
 
 (def default-clj-kondo-config
+  ;; See https://github.com/clj-kondo/clj-kondo/tree/master/analysis#extra-analysis
   {:analysis
-   {:arglists true
-    :locals true
+   {:locals true
     :keywords true
-    :java-class-usages true}
+    :arglists true
+    :symbols true
+    :java-class-definitions true
+    :java-class-usages true
+    :java-member-definitions true
+    :instance-invocations true}
 
    :output
    {:canonical-paths true}})
