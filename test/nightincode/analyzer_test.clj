@@ -1,8 +1,46 @@
 (ns nightincode.analyzer-test
   (:require
-   [clojure.test :refer [deftest is]]
+   [clojure.java.io :as io]
+   [clojure.test :refer [deftest testing is]]
+
+   [clj-kondo.core :as clj-kondo]
 
    [nightincode.analyzer :as analyzer]))
+
+(deftest default-clj-kondo-config-test
+  (let [{:keys [analysis]} (clj-kondo/run!
+                             {:lint [(.getPath (io/resource "example1.cljc"))]
+                              :config analyzer/default-clj-kondo-config})]
+    (testing "Namespace example1 definition"
+      (is (= '[{:lang :clj
+                :row 1
+                :end-row 3
+                :col 1
+                :end-col 15
+                :name example1
+                :name-col 5
+                :name-end-col 13
+                :name-end-row 1
+                :name-row 1
+                :doc "Namespace for testing."
+                :meta {:foo :bar}}
+               {:lang :cljs
+                :row 1
+                :end-row 3
+                :col 1
+                :end-col 15
+                :name example1
+                :name-col 5
+                :name-end-col 13
+                :name-end-row 1
+                :name-row 1
+                :doc "Namespace for testing."
+                :meta {:foo :bar}}]
+            (into []
+              (map
+                (fn [data]
+                  (dissoc data :filename)))
+              (:namespace-definitions analysis)))))))
 
 (deftest merge-index-test
   (is (= {:a [:x :y :z]} (analyzer/merge-index {:a [:x :y]} {:a [:z]}))))
