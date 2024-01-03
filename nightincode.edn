@@ -5,7 +5,4 @@
   :documentHighlightProvider true
   :documentSymbolProvider true
   :hoverProvider true
-  :workspaceSymbolProvider true}
-
- :analyzer
- {:paths ["src" "dev" "test"]}}
+  :workspaceSymbolProvider true}}
