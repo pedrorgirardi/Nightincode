@@ -4,38 +4,71 @@
 
 ;; -- LSP
 
+;; -- TraceValue
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#traceValue
+(s/def :lsp/TraceValue
+  #{"off"
+    "messages"
+    "verbose"})
+
+
+;; -- InitializeParams
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initializeParams
+
+(s/def :lsp.InitializeParams/processId (s/nilable int?))
+(s/def :lsp.InitializeParams/rootPath (s/nilable string?))
+(s/def :lsp.InitializeParams/rootUri string?)
+(s/def :lsp.InitializeParams/locale (s/nilable string?))
+(s/def :lsp.InitializeParams/trace (s/nilable :lsp/TraceValue))
+(s/def :lsp.InitializeParams/clientInfo (s/nilable map?))
+(s/def :lsp.InitializeParams/capabilities (s/nilable map?))
+(s/def :LSP/InitializeParams
+  (s/keys
+    :req-un [:lsp.InitializeParams/processId
+             :lsp.InitializeParams/rootUri
+             :lsp.InitializeParams/capabilities]
+
+    :opt-un [:lsp.InitializeParams/clientInfo
+             :lsp.InitializeParams/locale
+             :lsp.InitializeParams/rootPath
+             :lsp.InitializeParams/trace]))
+
+;; -- InitializedParams
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#initialized
+
+(s/def :LSP/InitializedParams any?)
+
+
 ;; -- Position
 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#position
 
-(s/def :lsp.position/line nat-int?)
-(s/def :lsp.position/character nat-int?)
+(s/def :lsp.Position/line nat-int?)
+(s/def :lsp.Position/character nat-int?)
 (s/def :lsp/Position
   (s/keys
-    :req-un [:lsp.position/line
-             :lsp.position/character]))
+    :req-un [:lsp.Position/line
+             :lsp.Position/character]))
 
 
 ;; -- Range
 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#range
 
-(s/def :lsp.range/start :lsp/Position)
-(s/def :lsp.range/end :lsp/Position)
+(s/def :lsp.Range/start :lsp/Position)
+(s/def :lsp.Range/end :lsp/Position)
 (s/def :lsp/Range
   (s/keys
-    :req-un [:lsp.range/start
-             :lsp.range/end]))
+    :req-un [:lsp.Range/start
+             :lsp.Range/end]))
 
 
 ;; -- Diagnostic
 ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic
 
-(s/def :lsp.diagnostic/range :lsp/Range)
-(s/def :lsp.diagnostic/code (s/or :ineteger int? :string string?))
-(s/def :lsp.diagnostic/source string?)
-(s/def :lsp.diagnostic/message string?)
-
-;; See https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnosticSeverity
-(s/def :lsp.diagnostic/severity
+(s/def :lsp.Diagnostic/range :lsp/Range)
+(s/def :lsp.Diagnostic/code (s/or :ineteger int? :string string?))
+(s/def :lsp.Diagnostic/source string?)
+(s/def :lsp.Diagnostic/message string?)
+(s/def :lsp.Diagnostic/severity
   #{;; Error
     1
     ;; Warning
@@ -47,11 +80,11 @@
 
 (s/def :lsp/Diagnostic
   (s/keys
-    :req-un [:lsp.diagnostic/message
-             :lsp.diagnostic/range]
-    :opt-un [:lsp.diagnostic/code
-             :lsp.diagnostic/source
-             :lsp.diagnostic/severity]))
+    :req-un [:lsp.Diagnostic/message
+             :lsp.Diagnostic/range]
+    :opt-un [:lsp.Diagnostic/code
+             :lsp.Diagnostic/source
+             :lsp.Diagnostic/severity]))
 
 
 ;; -- clj-kondo Finding
@@ -124,9 +157,6 @@
 (s/def :file/semthetics (s/coll-of :semthetic/semthetic))
 
 
-(s/def :LSP/InitializeParams (s/map-of string? any?))
-
-(s/def :LSP/InitializedParams (s/map-of string? any?))
 
 (s/def :nightincode.document-index/text string?)
 
@@ -161,6 +191,6 @@
 
   (require '[exoscale.lingo :as lingo])
 
-  (lingo/explain :lsp.position/line -1)
+  (lingo/explain :lsp.Position/line -1)
 
   )
