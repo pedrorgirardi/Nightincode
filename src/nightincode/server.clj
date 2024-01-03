@@ -251,6 +251,15 @@
 ;; ---------------------------------------------------------
 
 
+(defn deps-paths
+  "Returns a vector of paths and extra-paths."
+  [deps-map]
+  (reduce-kv
+    (fn [paths _ {:keys [extra-paths]}]
+      (into paths extra-paths))
+    (:paths deps-map)
+    (:aliases deps-map)))
+
 (defn analyze
   "Analyze Clojure/Script forms with clj-kondo."
   [{:keys [config root-path]}]
@@ -258,24 +267,14 @@
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
+      ;; Analysis doesn't work without a `.clj-kondo` directory.
+      (let [clj-kondo-cache (io/file root-path ".clj-kondo")]
+        (when-not (.exists clj-kondo-cache)
+          (.mkdir clj-kondo-cache)))
 
-      #_#_{:keys [classpath-roots]} (deps/create-basis
-                                        {:projet (io/file root-path "deps.edn")})
-
+      ;; Analyze/lint paths and extra-paths:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
-        (let [;; Analyze/lint paths and extra-paths:
-              paths (reduce-kv
-                      (fn [paths _ {:keys [extra-paths]}]
-                        (into paths extra-paths))
-                      (:paths deps-map [])
-                      (:aliases deps-map))
-
-              clj-kondo-cache (io/file root-path ".clj-kondo")]
-
-          ;; Analysis doesn't work without a `.clj-kondo` directory.
-          (when-not (.exists clj-kondo-cache)
-            (.mkdir clj-kondo-cache))
-
+        (when-let [paths (deps-paths deps-map)]
           (clj-kondo/run!
             {:lint paths
              :parallel true
@@ -448,7 +447,7 @@
 
        :serverInfo
        {:name "Nightincode"
-        :version "0.11.0"}})))
+        :version "0.12.0-dev"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 

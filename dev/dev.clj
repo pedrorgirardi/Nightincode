@@ -9,6 +9,10 @@
 
 (comment
 
+  (deps/slurp-deps (io/file "/Users/pedro/Developer/Nightincode" "foo.edn"))
+  ;; => nil
+
+
   (def deps-file
     (io/file "/Users/pedro/Developer/Nightincode" "deps.edn"))
 
