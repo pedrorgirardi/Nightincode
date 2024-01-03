@@ -8,6 +8,6 @@
     ],
     "pep": {
         "paths": ["src", "dev", "test"],
-        "classpath": "clojure -A:build -Spath"
+        "classpath": "clojure -Spath"
     }
 }

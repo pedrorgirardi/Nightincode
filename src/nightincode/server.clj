@@ -263,13 +263,22 @@
                                         {:projet (io/file root-path "deps.edn")})
 
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
-        (let [paths (reduce-kv
+        (let [;; Analyze/lint paths and extra-paths:
+              paths (reduce-kv
                       (fn [paths _ {:keys [extra-paths]}]
                         (into paths extra-paths))
                       (:paths deps-map [])
-                      (:aliases deps-map))]
+                      (:aliases deps-map))
+
+              clj-kondo-cache (io/file root-path ".clj-kondo")]
+
+          ;; Analysis doesn't work without a `.clj-kondo` directory.
+          (when-not (.exists clj-kondo-cache)
+            (.mkdir clj-kondo-cache))
+
           (clj-kondo/run!
             {:lint paths
+             :parallel true
              :config (or config default-clj-kondo-config)}))))))
 
 (defn analyze-text
@@ -382,8 +391,6 @@
 
         config (config root-path)
 
-        conn (d/create-conn analyzer/schema)
-
         ;; TODO:
         ;; Document Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting
         ;; Document Range Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting
@@ -423,13 +430,14 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})
 
-        {:keys [analysis]} (analyze {:root-path root-path})
+        conn (d/create-conn analyzer/schema)]
 
-        index (analyzer/index analysis)
-
-        tx-data (analyzer/prepare-semthetics index)]
-
-    (d/transact! conn tx-data)
+    ;; Analyze & transact Semthetics:
+    ;; (If there's a deps.edn at root-path.)
+    (when-let [result (analyze {:root-path root-path})]
+      (let [index (analyzer/index (:analysis result))
+            tx-data (analyzer/prepare-semthetics index)]
+        (d/transact! conn tx-data)))
 
     (set-state assoc
       :LSP/InitializeParams (:params request)
@@ -440,7 +448,7 @@
 
        :serverInfo
        {:name "Nightincode"
-        :version "0.10.0"}})))
+        :version "0.11.0-dev"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 
