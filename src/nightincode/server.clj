@@ -13,6 +13,7 @@
 
    [clj-kondo.core :as clj-kondo]
    [datascript.core :as d]
+   [exoscale.lingo :as lingo]
 
    [nightincode.specs]
    [nightincode.lsp :as lsp]
@@ -461,29 +462,31 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})
 
-        conn (d/create-conn analyzer/schema)]
+        conn (d/create-conn analyzer/schema)
 
-    ;; Analyze & transact Semthetics:
-    ;; (If there's a deps.edn at root-path.)
-    (when-let [result (analyze-root-path {:root-path root-path})]
-      (let [{:keys [findings analysis]} result
+        ;; Analyze & transact Semthetics:
+        ;; (If there's a deps.edn at root-path.)
+        {:keys [nightincode/diagnostics]} (when-let [result (analyze-root-path {:root-path root-path})]
+                                            (let [{:keys [findings analysis]} result
 
-            index (analyzer/index analysis)
+                                                  index (analyzer/index analysis)
 
-            tx-data (analyzer/prepare-semthetics index)]
+                                                  tx-data (analyzer/prepare-semthetics index)]
 
-        (d/transact! conn tx-data)
+                                              (merge {:tx-report (d/transact! conn tx-data)}
+                                                (when-let [diagnostics (uri->diagnostics findings)]
+                                                  {:nightincode/diagnostics diagnostics}))))
 
-        (set-state assoc
-          :nightincode/diagnostics (uri->diagnostics findings))))
+        initialized (set-state assoc
+                      :LSP/InitializeParams (:params request)
+                      :nightincode/analyzer {:conn conn}
+                      :nightincode/diagnostics diagnostics)]
 
-    (set-state assoc
-      :LSP/InitializeParams (:params request)
-      :nightincode/analyzer {:conn conn})
+    (when-not (s/valid? :server.state/initialized initialized)
+      (log/warn (lingo/explain-str :server.state/initialized initialized)))
 
     (lsp/response request
       {:capabilities capabilities
-
        :serverInfo
        {:name "Nightincode"
         :version "0.12.0-dev"}})))

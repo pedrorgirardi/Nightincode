@@ -140,12 +140,21 @@
 (s/def :nightincode/diagnostics
   (s/map-of string? (s/coll-of :lsp/Diagnostic)))
 
+(s/def :nightincode/analyzer map?)
+
 (s/def :server/state
   (s/keys
     :opt [:LSP/InitializeParams
           :LSP/InitializedParams
           :nightincode/document-index
-          :nightincode/diagnostics]))
+          :nightincode/diagnostics
+          :nightincode/analyzer]))
+
+(s/def :server.state/initialized
+  (s/keys
+    :req [:LSP/InitializeParams
+          :nightincode/analyzer]
+    :opt [:nightincode/diagnostics]))
 
 
 (comment
