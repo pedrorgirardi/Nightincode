@@ -33,7 +33,9 @@
 (def default-clj-kondo-config
   ;; See https://github.com/clj-kondo/clj-kondo/tree/master/analysis#extra-analysis
   {:analysis
-   {:locals true
+   {:namespace-definitions {:meta true}
+    :var-definitions {:meta true}
+    :locals true
     :keywords true
     :arglists true
     :symbols true

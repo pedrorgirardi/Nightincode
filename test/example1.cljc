@@ -1,4 +1,6 @@
-(ns example1)
+(ns example1
+  "Namespace for testing."
+  {:foo :bar})
 
 (def
   a
