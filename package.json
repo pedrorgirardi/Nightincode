@@ -23,7 +23,9 @@
     "Clojure",
     "ClojureScript"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "workspaceContains:**/deps.edn"
+  ],
   "main": "./extension.js",
   "contributes": {
     "configurationDefaults": {
