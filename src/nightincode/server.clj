@@ -260,8 +260,16 @@
     (:paths deps-map)
     (:aliases deps-map)))
 
-(defn analyze
-  "Analyze Clojure/Script forms with clj-kondo."
+(defn analyze-deps-paths
+  "Analyze `deps-paths` with clj-kondo."
+  [{:keys [config deps-paths]}]
+  (clj-kondo/run!
+    {:lint deps-paths
+     :parallel true
+     :config (or config default-clj-kondo-config)}))
+
+(defn analyze-root-path
+  "Analyze `root-path` with clj-kondo."
   [{:keys [config root-path]}]
   (with-open [noop-out (PrintWriter. (Writer/nullWriter))
               noop-err (PrintWriter. (Writer/nullWriter))]
@@ -275,13 +283,12 @@
       ;; Analyze/lint paths and extra-paths:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
         (when-let [paths (deps-paths deps-map)]
-          (clj-kondo/run!
-            {:lint paths
-             :parallel true
-             :config (or config default-clj-kondo-config)}))))))
+          (analyze-deps-paths
+            {:config config
+             :deps-paths paths}))))))
 
 (defn analyze-text
-  "Analyze Clojure/Script forms with clj-kondo.
+  "Analyze `text` with clj-kondo.
 
   `uri` is used to report the filename."
   [{:keys [uri text config]}]
@@ -433,7 +440,7 @@
 
     ;; Analyze & transact Semthetics:
     ;; (If there's a deps.edn at root-path.)
-    (when-let [result (analyze {:root-path root-path})]
+    (when-let [result (analyze-root-path {:root-path root-path})]
       (let [index (analyzer/index (:analysis result))
             tx-data (analyzer/prepare-semthetics index)]
         (d/transact! conn tx-data)))
