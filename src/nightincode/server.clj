@@ -425,7 +425,8 @@
                  :diagnostics []}))))
 
         (catch Exception ex
-          (log/error ex "Processing text change error. Document:" uri))))))
+          (log/error ex "Processing text change error. Document:" uri))))
+    300))
 
 
 ;; ---------------------------------------------------------
