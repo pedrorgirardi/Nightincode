@@ -418,7 +418,7 @@
             :else
             (do
               (set-state update
-                :nightincode/diagnostics assoc uri [])
+                :nightincode/diagnostics dissoc uri)
 
               (publish-diagnostics (_out @state-ref)
                 {:uri uri
@@ -657,7 +657,14 @@
           text-document-text (text-document-text textDocument)]
 
       ;; Persist in-memory document's text.
-      (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text}))
+      (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text})
+
+      ;; Text change processing and diagnostics is debounced.
+      (process-text-change
+        {:uri text-document-uri
+         :text text-document-text
+         :conn (_analyzer-conn @state-ref)
+         :out (_out @state-ref)}))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didOpen"))))
@@ -677,9 +684,7 @@
           text-document-version (text-document-version textDocument)
 
           ;; The client sends the full text because textDocumentSync capability is set to 1 (full).
-          text-document-text (get-in notification [:params :contentChanges 0 :text])
-
-          out (_out @state-ref)]
+          text-document-text (get-in notification [:params :contentChanges 0 :text])]
 
       ;; Update document's persisted text.
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text
@@ -690,7 +695,7 @@
         {:uri text-document-uri
          :text text-document-text
          :conn (_analyzer-conn @state-ref)
-         :out out}))
+         :out (_out @state-ref)}))
 
     (catch Exception ex
       (log/error ex "Error: textDocument/didChange"))))
