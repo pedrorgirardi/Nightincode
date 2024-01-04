@@ -99,6 +99,18 @@
 (defn filepath-uri ^URI [filepath]
   (->  (io/file filepath) .toPath .toUri))
 
+(defn uri-path [uri]
+  (let [^URI uri (cond
+                   (instance? URI uri)
+                   uri
+
+                   (string? uri)
+                   (URI. uri)
+
+                   :else
+                   (throw (ex-info (format "Can't convert %s to java.net.URI." uri) {})))]
+    (.getPath uri)))
+
 (defn diagnostic
   "Returns a Diagnostic for a clj-kondo finding.
 
@@ -140,9 +152,16 @@
           (fn [finding]
             (s/valid? :clj-kondo/finding finding)))
         (map
-          (fn [finding]
-            (with-meta (diagnostic finding)
-              {:uri (.toString (filepath-uri (:filename finding)))}))))
+          (fn [{:keys [filename] :as finding}]
+            (let [uri (URI. filename)
+                  file? (= (.getScheme uri) "file")]
+              (with-meta (diagnostic finding)
+                ;; Unsaved files don't have a "file" scheme,
+                ;; and it should not be converted to a URI.
+                {:uri
+                 (if file?
+                   (.toString uri)
+                   filename)})))))
       findings)))
 
 (defn semthetic-markdown
@@ -305,7 +324,7 @@
       (with-in-str text
         (clj-kondo/run!
           {:lint ["-"]
-           :filename (.getPath (URI. uri))
+           :filename (or (uri-path uri) uri)
            :config (or config default-clj-kondo-config)})))))
 
 (defn config [root-path]
@@ -693,6 +712,7 @@
   (try
     (let [textDocument (get-in notification [:params :textDocument])
 
+          ;; Note: URI of unsaved files is like "untitled:Untitled-1".
           text-document-uri (text-document-uri textDocument)]
 
       ;; Clear document's persisted text.

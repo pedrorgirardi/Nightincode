@@ -40,8 +40,22 @@
 
   ;; ---
 
+  (.getScheme (java.net.URI. "untitled:Untitled-1"))
+  ;; =>
+  "untitled"
+
+  (.getScheme (java.net.URI. "file:///Users/pedro/Developer/Nightincode/src/nightincode/server.clj"))
+  ;; =>
+  "file"
+
+  (server/uri-path nil)
+  (server/uri-path "untitled:Untitled-1")
+  (server/uri-path "file:///Users/pedro/Developer/Nightincode/src/nightincode/server.clj")
+
 
   (keys @server/state-ref)
+
+  (:nightincode/document-index @server/state-ref)
 
 
   (server/_diagnostics @server/state-ref)
