@@ -3,7 +3,7 @@
 All notable changes to this project will be documented in this file.
 
 ## 0.12.0 - in development
-- Publish diagnostics for paths
+- Diagnostics improvements and bug fixes
 - Show info message when Nightincode is up and running
 
 ## 0.11.0 - 2024-01-03
