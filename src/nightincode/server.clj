@@ -546,13 +546,21 @@
 
     (set-state merge {:lsp/InitializedParams (:params notification)} probe-state)
 
-    ;; Log a welcome message in the client.
+    ;; Log a welcome message in the client:
     (lsp/write (_out @state-ref)
       {:jsonrpc "2.0"
        :method "window/logMessage"
        :params
        {:type 4
         :message (format "Nightincode is up and running!\n\nA REPL is available on port %s.\n\nHappy coding!" (_repl-port @state-ref))}})
+
+    ;; Show a welcome message:
+    (lsp/write (_out @state-ref)
+      {:jsonrpc "2.0"
+       :method "window/showMessage"
+       :params
+       {:type 3
+        :message "Nightincode is up and running. Happy coding!"}})
 
     ;; Publish diagnostics:
     (doseq [[uri diagnostics] (_diagnostics @state-ref)]
