@@ -166,6 +166,11 @@
           (cond
             ;; Execute request handler in an event-loop.
             ;; (It's assumed that only requests have ID.)
+            ;;
+            ;; Responses to requests should be sent in roughly the same order
+            ;; as the requests appear on the server or client side.
+            ;;
+            ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#messageOrdering
             jsonrpc-id
             (.execute re
               (fn []
