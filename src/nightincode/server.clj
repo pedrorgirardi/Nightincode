@@ -471,10 +471,6 @@
 
         config (config root-path)
 
-        ;; TODO:
-        ;; Document Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting
-        ;; Document Range Formatting Request https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_rangeFormatting
-
         capabilities (or (:capabilities config)
                        {;; Defines how the host (editor) should sync document changes to the language server.
                         ;;
@@ -514,12 +510,12 @@
 
         classpath-db-storage (d/file-storage (io/file root-path ".nightincode" "db"))
 
-        ;; FIXME
-        #_#_conn-classpath (or
-                             (d/restore-conn classpath-db-storage)
-                             (d/create-conn analyzer/schema {:storage classpath-db-storage}))
-
-        conn-classpath (d/create-conn analyzer/schema {:storage classpath-db-storage})
+        conn-classpath (or
+                         (try
+                           (d/restore-conn classpath-db-storage)
+                           (catch Exception ex
+                             (log/warn "Can't restore conn" ex)))
+                         (d/create-conn analyzer/schema {:storage classpath-db-storage}))
 
         ;; Analyze & transact Semthetics:
         ;; (If there's a deps.edn at root-path.)

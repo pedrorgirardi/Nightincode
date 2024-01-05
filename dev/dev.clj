@@ -4,8 +4,10 @@
    [clojure.string :as str]
    [clojure.tools.deps :as deps]
 
+   [datascript.core :as d]
+
    [nightincode.server :as server]
-   [datascript.core :as d]))
+   [nightincode.analyzer :as analyzer]))
 
 (comment
 
@@ -263,6 +265,14 @@
 
 
   ;; ---
+
+  (def root-path (get-in @server/state-ref [:lsp/InitializeParams :rootPath]))
+
+  (def classpath-db-storage (d/file-storage (io/file root-path ".nightincode" "db")))
+
+  (or
+    (d/restore-conn classpath-db-storage)
+    (d/create-conn analyzer/schema {:storage classpath-db-storage}))
 
 
   (def conn (server/_analyzer-conn-paths @server/state-ref))
