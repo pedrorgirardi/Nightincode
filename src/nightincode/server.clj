@@ -403,8 +403,7 @@
 (def MessageType_Log 4)
 (def MessageType_Debug 5)
 
-
-(defn publish-diagnostics
+(defn textDocument-publishDiagnostics
   "Diagnostics notification are sent from the server to the client to signal results of validation runs.
 
   https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_publishDiagnostics"
@@ -424,6 +423,10 @@
     {:jsonrpc "2.0"
      :method "window/showMessage"
      :params params}))
+
+
+;; ---------------------------------------------------------
+
 
 (def process-text-change
   (debounce
@@ -461,7 +464,7 @@
                 :nightincode/diagnostics (merge (_diagnostics @state-ref) diagnostics))
 
               (doseq [[uri diagnostics] diagnostics]
-                (publish-diagnostics (_out @state-ref)
+                (textDocument-publishDiagnostics (_out @state-ref)
                   {:uri uri
                    :diagnostics diagnostics})))
 
@@ -473,7 +476,7 @@
               (set-state update
                 :nightincode/diagnostics dissoc uri)
 
-              (publish-diagnostics (_out @state-ref)
+              (textDocument-publishDiagnostics (_out @state-ref)
                 {:uri uri
                  :diagnostics []}))))
 
@@ -634,7 +637,7 @@
 
     ;; Publish diagnostics:
     (doseq [[uri diagnostics] (_diagnostics @state-ref)]
-      (publish-diagnostics (_out @state-ref)
+      (textDocument-publishDiagnostics (_out @state-ref)
         {:uri uri
          :diagnostics diagnostics}))))
 
