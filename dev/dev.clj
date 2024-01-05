@@ -11,23 +11,23 @@
 
 (comment
 
-  (deps/slurp-deps (io/file "/Users/pedro/Developer/Nightincode" "foo.edn"))
+  (def root-path (server/_root-path @server/state-ref))
+
+
+  (deps/slurp-deps (io/file root-path "foo.edn"))
   ;; => nil
 
 
   (def deps-file
-    (io/file "/Users/pedro/Developer/Nightincode" "deps.edn"))
+    (io/file root-path "deps.edn"))
 
-  (let [deps-map (deps/slurp-deps deps-file)]
-    (reduce-kv
-      (fn [paths _ {:keys [extra-paths]}]
-        (into paths extra-paths))
-      (:paths deps-map [])
-      (:aliases deps-map)))
+  (server/deps-paths (deps/slurp-deps deps-file))
+  ;; =>
+  ["src" "resources" "dev" "test"]
 
   (def basis
     (deps/create-basis
-      {:projet "/Users/pedro/Developer/Nightincode/deps.edn"}))
+      {:projet deps-file}))
 
   (:argmap basis)
   (:classpath-roots basis)
@@ -36,11 +36,9 @@
 
   (deps/print-tree (:libs basis))
 
-  (str/join ":" (:classpath-roots basis))
 
+  ;; ----------------------------------------------
 
-
-  ;; ---
 
   (.getScheme (java.net.URI. "untitled:Untitled-1"))
   ;; =>
@@ -264,9 +262,8 @@
    :workspaceFolders [{:uri "file:///Users/pedro/Developer/Nightincode" :name "Nightincode"}]}
 
 
-  ;; ---
+  ;; ----------------------------------------------
 
-  (def root-path (get-in @server/state-ref [:lsp/InitializeParams :rootPath]))
 
   (def classpath-db-storage (d/file-storage (io/file root-path ".nightincode" "db")))
 
@@ -276,6 +273,18 @@
 
 
   (def conn (server/_analyzer-conn-paths @server/state-ref))
+  (def conn-classpath (server/_analyzer-conn-classpath @server/state-ref))
+
+
+  (analyzer/?semantic-definitions (d/db conn-classpath)
+    {:semthetic/semantic :var
+     :semthetic/identifier 'clojure.core/map})
+  
+  {:semthetic/filename "/Users/pedro/.m2/repository/org/clojure/clojure/1.11.1/clojure-1.11.1.jar:clojure/core.clj"}
+
+
+  ;; ----------------------------------------------
+
 
   ;; Every Namespace:
   (d/q '[:find  [(pull ?v [:semthetic/identifier]) ...]
