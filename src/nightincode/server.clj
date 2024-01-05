@@ -275,10 +275,10 @@
 
 ;; ---------------------------------------------------------
 
-(defn clj-kondo-cache! [root-path]
-  (let [clj-kondo-cache (io/file root-path ".clj-kondo")]
-    (when-not (.exists clj-kondo-cache)
-      (.mkdir clj-kondo-cache))))
+(defn mkdir-clj-kondo-cache! [root-path]
+  (let [dir (io/file root-path ".clj-kondo")]
+    (when-not (.exists dir)
+      (.mkdir dir))))
 
 (defn deps-paths
   "Returns a vector of paths and extra-paths."
@@ -299,7 +299,7 @@
 
       ;; Note:
       ;; Analysis doesn't work without a `.clj-kondo` directory.
-      (clj-kondo-cache! root-path)
+      (mkdir-clj-kondo-cache! root-path)
 
       ;; Analyze/lint classpath:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
@@ -327,7 +327,7 @@
 
       ;; Note:
       ;; Analysis doesn't work without a `.clj-kondo` directory.
-      (clj-kondo-cache! root-path)
+      (mkdir-clj-kondo-cache! root-path)
 
       ;; Analyze/lint paths and extra-paths:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
@@ -508,10 +508,7 @@
 
         conn-paths (d/create-conn analyzer/schema)
 
-        conn-classpath (d/create-conn analyzer/schema
-                         {:storage
-                          (d/file-storage
-                            (io/file root-path ".nightincode" "db"))})
+        conn-classpath (d/create-conn analyzer/schema)
 
         ;; Analyze & transact Semthetics:
         ;; (If there's a deps.edn at root-path.)
