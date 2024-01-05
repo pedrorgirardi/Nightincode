@@ -1,7 +1,6 @@
 (ns dev
   (:require
    [clojure.java.io :as io]
-   [clojure.string :as str]
    [clojure.tools.deps :as deps]
 
    [datascript.core :as d]
@@ -10,6 +9,11 @@
    [nightincode.analyzer :as analyzer]))
 
 (comment
+
+  (server/window-showMessage (server/_out @server/state-ref)
+    {:type server/MessageType_Info
+     :message "Hello!"})
+
 
   (def root-path (server/_root-path @server/state-ref))
 

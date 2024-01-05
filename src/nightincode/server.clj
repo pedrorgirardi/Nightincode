@@ -390,6 +390,20 @@
 (defn _diagnostics [state]
   (:nightincode/diagnostics state))
 
+
+;; ---------------------------------------------------------
+
+
+;; -- MessageType
+;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#messageType
+
+(def MessageType_Error 1)
+(def MessageType_Warning 2)
+(def MessageType_Info 3)
+(def MessageType_Log 4)
+(def MessageType_Debug 5)
+
+
 (defn publish-diagnostics
   "Diagnostics notification are sent from the server to the client to signal results of validation runs.
 
@@ -398,6 +412,17 @@
   (lsp/write out
     {:jsonrpc "2.0"
      :method "textDocument/publishDiagnostics"
+     :params params}))
+
+(defn window-showMessage
+  "The show message notification is sent from a server to a client
+  to ask the client to display a particular message in the user interface.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#window_showMessage"
+  [out params]
+  (lsp/write out
+    {:jsonrpc "2.0"
+     :method "window/showMessage"
      :params params}))
 
 (def process-text-change
@@ -1043,30 +1068,3 @@
   (start
     {:in System/in
      :out System/out}))
-
-
-(comment
-
-  (keys @state-ref)
-
-
-  (lsp/write (_out @state-ref)
-    {:jsonrpc "2.0"
-     :method "window/showMessage"
-     :params {:type 3
-              :message "Hello!"}})
-
-  (require '[clojure.tools.cli.api :as deps-cli])
-  (require '[clojure.tools.deps.alpha :as deps])
-
-  (def deps-file
-    (deps/slurp-deps (io/file "/Users/pedro/Developer/Nightincode/deps.edn")))
-
-  (deps/calc-basis deps-file)
-
-  (deps-cli/list
-    {:project deps-file
-     :license :none})
-
-
-  )
