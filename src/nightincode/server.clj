@@ -275,6 +275,10 @@
 
 ;; ---------------------------------------------------------
 
+(defn clj-kondo-cache! [root-path]
+  (let [clj-kondo-cache (io/file root-path ".clj-kondo")]
+    (when-not (.exists clj-kondo-cache)
+      (.mkdir clj-kondo-cache))))
 
 (defn deps-paths
   "Returns a vector of paths and extra-paths."
@@ -292,6 +296,33 @@
     {:lint deps-paths
      :parallel true
      :config (or config default-clj-kondo-config)}))
+
+(defn analyze-classpath
+  "Analyze classpath with clj-kondo."
+  [{:keys [root-path]}]
+  (with-open [noop-out (PrintWriter. (Writer/nullWriter))
+              noop-err (PrintWriter. (Writer/nullWriter))]
+    (binding [*out* noop-out
+              *err* noop-err]
+
+      ;; Analysis doesn't work without a `.clj-kondo` directory.
+      (clj-kondo-cache! root-path)
+
+      ;; Analyze/lint classpath:
+      (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
+        (let [basis (deps/create-basis {:projet deps-map})]
+          (clj-kondo/run!
+            {:lint (:classpath-roots basis)
+             :parallel true
+             :config
+             {:analysis
+              {:var-usages false
+               :var-definitions {:shallow true}
+               :arglists true
+               :keywords true
+               :java-class-definitions false}
+              :output
+              {:canonical-paths true}}}))))))
 
 (defn analyze-root-path
   "Analyze `root-path` with clj-kondo."
@@ -356,8 +387,11 @@
 (defn _root-path [state]
   (get-in state [:lsp/InitializeParams :rootPath]))
 
-(defn _analyzer-conn [state]
-  (get-in state [:nightincode/analyzer :conn]))
+(defn _analyzer-conn-paths [state]
+  (get-in state [:nightincode/analyzer :conn-paths]))
+
+(defn _analyzer-conn-classpath [state]
+  (get-in state [:nightincode/analyzer :conn-classpath]))
 
 (defn _diagnostics [state]
   (:nightincode/diagnostics state))
@@ -482,7 +516,16 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})
 
-        conn (d/create-conn analyzer/schema)
+        conn-paths (d/create-conn analyzer/schema)
+
+        classpath-db-storage (d/file-storage (io/file root-path ".nightincode" "db"))
+
+        ;; FIXME
+        #_#_conn-classpath (or
+                             (d/restore-conn classpath-db-storage)
+                             (d/create-conn analyzer/schema {:storage classpath-db-storage}))
+
+        conn-classpath (d/create-conn analyzer/schema {:storage classpath-db-storage})
 
         ;; Analyze & transact Semthetics:
         ;; (If there's a deps.edn at root-path.)
@@ -493,14 +536,21 @@
 
                                                   tx-data (analyzer/prepare-semthetics index)]
 
-                                              (merge {:tx-report (d/transact! conn tx-data)}
+                                              (merge {:tx-report (d/transact! conn-paths tx-data)}
                                                 (when-let [diagnostics (uri->diagnostics findings)]
                                                   {:nightincode/diagnostics diagnostics}))))
 
         initialized (set-state assoc
                       :lsp/InitializeParams (:params request)
-                      :nightincode/analyzer {:conn conn}
+                      :nightincode/analyzer {:conn-paths conn-paths :conn-classpath conn-classpath}
                       :nightincode/diagnostics diagnostics)]
+
+    ;; -- Analyze classpath on a separate thread
+    (future
+      (let [{:keys [analysis]} (analyze-classpath {:root-path root-path})
+            index (analyzer/index analysis)
+            semthetics (analyzer/prepare-semthetics index)]
+        (d/transact! conn-classpath semthetics)))
 
     (when-not (s/valid? :nightincode.state/initialized initialized)
       (log/warn (lingo/explain-str :nightincode.state/initialized initialized)))
@@ -663,7 +713,7 @@
       (process-text-change
         {:uri text-document-uri
          :text text-document-text
-         :conn (_analyzer-conn @state-ref)
+         :conn (_analyzer-conn-paths @state-ref)
          :out (_out @state-ref)}))
 
     (catch Exception ex
@@ -694,7 +744,7 @@
       (process-text-change
         {:uri text-document-uri
          :text text-document-text
-         :conn (_analyzer-conn @state-ref)
+         :conn (_analyzer-conn-paths @state-ref)
          :out (_out @state-ref)}))
 
     (catch Exception ex
@@ -740,7 +790,8 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          db (d/db (_analyzer-conn @state-ref))
+          db (d/db (_analyzer-conn-paths @state-ref))
+          dbc (d/db (_analyzer-conn-classpath @state-ref))
 
           cursor-semthetic (analyzer/?cursor-semthetic db
                              {:filename (text-document-path textDocument)
@@ -754,7 +805,9 @@
                           (fn [loc]
                             (analyzer/loc-location filename loc))
                           locs))
-                      (analyzer/?semantic-definitions db cursor-semthetic))]
+                      (or
+                        (seq (analyzer/?semantic-definitions db cursor-semthetic))
+                        (seq (analyzer/?semantic-definitions dbc cursor-semthetic))))]
 
       (lsp/response request (seq locations)))
 
@@ -780,7 +833,7 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          db (d/db (_analyzer-conn @state-ref))
+          db (d/db (_analyzer-conn-paths @state-ref))
 
           cursor-semthetic (analyzer/?cursor-semthetic db
                              {:filename (text-document-path textDocument)
@@ -820,7 +873,7 @@
           cursor-line (get-in request [:params :position :line])
           cursor-character (get-in request [:params :position :character])
 
-          db (d/db (_analyzer-conn @state-ref))
+          db (d/db (_analyzer-conn-paths @state-ref))
 
           cursor-semthetic (analyzer/?cursor-semthetic db
                              {:filename (text-document-path textDocument)
@@ -867,7 +920,7 @@
   (try
     (let [textDocument (get-in request [:params :textDocument])
 
-          db (d/db (_analyzer-conn @state-ref))
+          db (d/db (_analyzer-conn-paths @state-ref))
 
           ;; Find namespace and var definitions in file.
           definitions (d/q '[:find [(pull ?e [*]) ...]
@@ -924,7 +977,8 @@
           {cursor-line :line
            cursor-character :character} cursor-position
 
-          db (d/db (_analyzer-conn @state-ref))
+          db (d/db (_analyzer-conn-paths @state-ref))
+          dbc (d/db (_analyzer-conn-classpath @state-ref))
 
           cursor-semthetic (analyzer/?cursor-semthetic db
                              {:filename (text-document-path textDocument)
@@ -932,7 +986,7 @@
                               :col (inc cursor-character)
                               :col-end (inc cursor-character)})
 
-          cursor-definitions (analyzer/?semantic-definitions db cursor-semthetic)]
+          cursor-definitions (analyzer/?semantic-definitions dbc cursor-semthetic)]
 
       (lsp/response request
         (when (seq cursor-definitions)
@@ -966,7 +1020,7 @@
   ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol
 
   (try
-    (let [db (d/db (_analyzer-conn @state-ref))
+    (let [db (d/db (_analyzer-conn-paths @state-ref))
 
           definitions (d/q '[:find [(pull ?e [*]) ...]
                              :in $ [?semantic ...]

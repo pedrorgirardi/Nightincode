@@ -265,7 +265,7 @@
   ;; ---
 
 
-  (def conn (server/_analyzer-conn @server/state-ref))
+  (def conn (server/_analyzer-conn-paths @server/state-ref))
 
   ;; Every Namespace:
   (d/q '[:find  [(pull ?v [:semthetic/identifier]) ...]

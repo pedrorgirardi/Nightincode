@@ -11,3 +11,4 @@ LSP.jar
 .lsp/
 target/
 nightincode.jar
+.nightincode/
