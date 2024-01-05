@@ -17,23 +17,24 @@
 
   (:gen-class))
 
-;; Implementation of methods defined in the specification.
-;;
-;; `handle` dispatch value is a method name string as defined in the specification,
-;; and it gets passed a JSON-RPC content.
-;;
-;; JSON-RPC content is converted to Clojure data with keyword keys.
-;; (https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#contentPart)
-;;
-;; JSON-RPC content encodes a Request or a Notification:
-;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
-;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
-;;
-;; Examples:
-;;
-;; (defmethod lsp/handle "initialize" [request] ...)
-;; (defmethod lsp/handle "textDocument/didOpen" [notification] ...)
-(defmulti handle :method)
+(defmulti handle
+  "Implementation of methods defined in the specification.
+
+  `handle` dispatch value is a method name string as defined in the specification,
+  and it gets passed a JSON-RPC content.
+
+  JSON-RPC content is converted to Clojure data with keyword keys.
+  (https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#contentPart)
+
+  JSON-RPC content encodes a Request or a Notification:
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#requestMessage
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#notificationMessage
+
+  Examples:
+
+  (defmethod lsp/handle \"initialize\" [request] ...)
+  (defmethod lsp/handle \"textDocument/didOpen\" [notification] ...)"
+  :method)
 
 (defn header
  "The header part consists of header fields.
