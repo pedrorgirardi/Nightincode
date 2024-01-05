@@ -289,14 +289,6 @@
     (:paths deps-map)
     (:aliases deps-map)))
 
-(defn analyze-deps-paths
-  "Analyze `deps-paths` with clj-kondo."
-  [{:keys [config deps-paths]}]
-  (clj-kondo/run!
-    {:lint deps-paths
-     :parallel true
-     :config (or config default-clj-kondo-config)}))
-
 (defn analyze-classpath
   "Analyze classpath with clj-kondo."
   [{:keys [root-path]}]
@@ -305,6 +297,7 @@
     (binding [*out* noop-out
               *err* noop-err]
 
+      ;; Note:
       ;; Analysis doesn't work without a `.clj-kondo` directory.
       (clj-kondo-cache! root-path)
 
@@ -324,30 +317,31 @@
               :output
               {:canonical-paths true}}}))))))
 
-(defn analyze-root-path
-  "Analyze `root-path` with clj-kondo."
-  [{:keys [config root-path]}]
+(defn analyze-paths
+  "Analyze paths with clj-kondo."
+  [{:keys [root-path]}]
   (with-open [noop-out (PrintWriter. (Writer/nullWriter))
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
+
+      ;; Note:
       ;; Analysis doesn't work without a `.clj-kondo` directory.
-      (let [clj-kondo-cache (io/file root-path ".clj-kondo")]
-        (when-not (.exists clj-kondo-cache)
-          (.mkdir clj-kondo-cache)))
+      (clj-kondo-cache! root-path)
 
       ;; Analyze/lint paths and extra-paths:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
         (when-let [paths (deps-paths deps-map)]
-          (analyze-deps-paths
-            {:config config
-             :deps-paths paths}))))))
+          (clj-kondo/run!
+            {:lint paths
+             :parallel true
+             :config default-clj-kondo-config}))))))
 
 (defn analyze-text
   "Analyze `text` with clj-kondo.
 
   `uri` is used to report the filename."
-  [{:keys [uri text config]}]
+  [{:keys [uri text]}]
   (with-open [noop-out (PrintWriter. (Writer/nullWriter))
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
@@ -356,7 +350,7 @@
         (clj-kondo/run!
           {:lint ["-"]
            :filename (or (uri-path uri) uri)
-           :config (or config default-clj-kondo-config)})))))
+           :config default-clj-kondo-config})))))
 
 (defn config [root-path]
   (let [config-file (io/file root-path "nightincode.edn")]
@@ -529,7 +523,7 @@
 
         ;; Analyze & transact Semthetics:
         ;; (If there's a deps.edn at root-path.)
-        {:keys [nightincode/diagnostics]} (when-let [result (analyze-root-path {:root-path root-path})]
+        {:keys [nightincode/diagnostics]} (when-let [result (analyze-paths {:root-path root-path})]
                                             (let [{:keys [findings analysis]} result
 
                                                   index (analyzer/index analysis)
