@@ -508,14 +508,10 @@
 
         conn-paths (d/create-conn analyzer/schema)
 
-        classpath-db-storage (d/file-storage (io/file root-path ".nightincode" "db"))
-
-        conn-classpath (or
-                         (try
-                           (d/restore-conn classpath-db-storage)
-                           (catch Exception ex
-                             (log/warn "Can't restore conn" ex)))
-                         (d/create-conn analyzer/schema {:storage classpath-db-storage}))
+        conn-classpath (d/create-conn analyzer/schema
+                         {:storage
+                          (d/file-storage
+                            (io/file root-path ".nightincode" "db"))})
 
         ;; Analyze & transact Semthetics:
         ;; (If there's a deps.edn at root-path.)
