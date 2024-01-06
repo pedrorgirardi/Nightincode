@@ -2,9 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.12.0 - in development
+## 0.12.0 - 2024-01-06
 - Diagnostics improvements and bug fixes
-- Show info message when Nightincode is up and running
+- Analyze classpath/dependencies - it's persisted on a different database
 
 ## 0.11.0 - 2024-01-03
 - Create `.clj-kondo` directory if it doesn't exist:

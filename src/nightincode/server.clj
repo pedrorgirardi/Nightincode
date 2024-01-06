@@ -534,6 +534,10 @@
                         ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
                         :workspaceSymbolProvider true})
 
+        ;; Databases:
+        ;; Paths and classpath analysis are persisted in different databases.
+        ;; Classpath database is only used for definitions.
+
         conn-paths (d/create-conn analyzer/schema)
 
         conn-classpath (d/create-conn analyzer/schema)
@@ -556,7 +560,7 @@
                       :nightincode/analyzer {:conn-paths conn-paths :conn-classpath conn-classpath}
                       :nightincode/diagnostics diagnostics)]
 
-    ;; -- Analyze classpath on a separate thread
+    ;; Analyze classpath on a separate thread:
     (future
       (let [{:keys [analysis]} (analyze-classpath {:root-path root-path})
             index (analyzer/index analysis)
@@ -570,7 +574,7 @@
       {:capabilities capabilities
        :serverInfo
        {:name "Nightincode"
-        :version "0.12.0-dev"}})))
+        :version "0.12.0"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 
