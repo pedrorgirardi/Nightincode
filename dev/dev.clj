@@ -1,5 +1,6 @@
 (ns dev
   (:require
+   [clojure.string :as str]
    [clojure.java.io :as io]
    [clojure.tools.deps :as deps]
 
@@ -284,7 +285,29 @@
     {:semthetic/semantic :var
      :semthetic/identifier 'clojure.core/map})
   
-  {:semthetic/filename "/Users/pedro/.m2/repository/org/clojure/clojure/1.11.1/clojure-1.11.1.jar:clojure/core.clj"}
+
+  ;; Open JAR & create temporary file:
+  (let [[jar clj] (str/split "/Users/pedro/.m2/repository/org/clojure/clojure/1.11.1/clojure-1.11.1.jar:clojure/core.clj" #":")]
+    (with-open [zf (java.util.zip.ZipFile. jar)]
+      (reduce
+        (fn [_ e]
+          (when (= (.getName e) clj)
+            (let [tmp (java.io.File/createTempFile (format "%s_" (.getName e)) nil)]
+              (with-open [in (.getInputStream zf e)]
+                (io/copy in tmp))
+
+              (reduced tmp))))
+        nil
+        (enumeration-seq (.entries zf)))))
+
+
+  (def tmp (io/file (System/getProperty "java.io.tmpdir") "clojure/core.clj"))
+
+  (io/make-parents tmp)
+
+  (when (.exists tmp)
+    (io/delete-file tmp))
+
 
 
   ;; ----------------------------------------------

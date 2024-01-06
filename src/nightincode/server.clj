@@ -804,10 +804,34 @@
 
           locations (mapcat
                       (fn [{:semthetic/keys [filename locs]}]
-                        (map
-                          (fn [loc]
-                            (analyzer/loc-location filename loc))
-                          locs))
+                        (let [jar? (str/includes? filename ".jar")
+
+                              [jar f] (str/split filename #":")
+
+                              filename (cond
+                                         jar?
+                                         (with-open [zf (java.util.zip.ZipFile. ^String jar)]
+                                           (reduce
+                                             (fn [_ ^java.util.zip.ZipEntry e]
+                                               (when (= (.getName e) f)
+                                                 (let [tmp (io/file (System/getProperty "java.io.tmpdir") (.getName e))]
+                                                   
+                                                   ;; Creates parent directories:
+                                                   (io/make-parents tmp)
+
+                                                   (with-open [in (.getInputStream zf e)]
+                                                     (io/copy in tmp))
+
+                                                   (reduced (.getPath tmp)))))
+                                             nil
+                                             (enumeration-seq (.entries zf))))
+
+                                         :else
+                                         filename)]
+                          (map
+                            (fn [loc]
+                              (analyzer/loc-location filename loc))
+                            locs)))
                       (or
                         (seq (analyzer/?semantic-definitions db cursor-semthetic))
                         (seq (analyzer/?semantic-definitions dbc cursor-semthetic))))]
