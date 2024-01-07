@@ -296,14 +296,13 @@
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
-
-      ;; Note:
-      ;; Analysis doesn't work without a `.clj-kondo` directory.
-      (mkdir-clj-kondo-cache! root-path)
-
       ;; Analyze/lint classpath:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
         (let [basis (deps/create-basis {:projet deps-map})]
+          ;; Note:
+          ;; Analysis doesn't work without a `.clj-kondo` directory.
+          (mkdir-clj-kondo-cache! root-path)
+
           (clj-kondo/run!
             {:lint (:classpath-roots basis)
              :parallel true
@@ -324,14 +323,13 @@
               noop-err (PrintWriter. (Writer/nullWriter))]
     (binding [*out* noop-out
               *err* noop-err]
-
-      ;; Note:
-      ;; Analysis doesn't work without a `.clj-kondo` directory.
-      (mkdir-clj-kondo-cache! root-path)
-
       ;; Analyze/lint paths and extra-paths:
       (when-let [deps-map (deps/slurp-deps (io/file root-path "deps.edn"))]
         (when-let [paths (deps-paths deps-map)]
+          ;; Note:
+          ;; Analysis doesn't work without a `.clj-kondo` directory.
+          (mkdir-clj-kondo-cache! root-path)
+
           (clj-kondo/run!
             {:lint paths
              :parallel true
@@ -539,42 +537,44 @@
         ;; Classpath database is only used for definitions.
 
         conn-paths (d/create-conn analyzer/schema)
-
         conn-classpath (d/create-conn analyzer/schema)
 
-        ;; Analyze & transact Semthetics:
-        ;; (If there's a deps.edn at root-path.)
-        {:keys [nightincode/diagnostics]} (when-let [result (analyze-paths {:root-path root-path})]
-                                            (let [{:keys [findings analysis]} result
+        {paths-findings :findings
+         paths-analysis :analysis} (analyze-paths {:root-path root-path})
 
-                                                  index (analyzer/index analysis)
-
-                                                  tx-data (analyzer/prepare-semthetics index)]
-
-                                              (merge {:tx-report (d/transact! conn-paths tx-data)}
-                                                (when-let [diagnostics (uri->diagnostics findings)]
-                                                  {:nightincode/diagnostics diagnostics}))))
+        paths-diagnostics (uri->diagnostics paths-findings)
+        paths-index (analyzer/index paths-analysis)
+        paths-semthetics (analyzer/prepare-semthetics paths-index)
 
         initialized (set-state assoc
                       :lsp/InitializeParams (:params request)
-                      :nightincode/analyzer {:conn-paths conn-paths :conn-classpath conn-classpath}
-                      :nightincode/diagnostics diagnostics)]
-
-    ;; Analyze classpath on a separate thread:
-    (future
-      (let [{:keys [analysis]} (analyze-classpath {:root-path root-path})
-            index (analyzer/index analysis)
-            semthetics (analyzer/prepare-semthetics index)]
-        (d/transact! conn-classpath semthetics)))
+                      :nightincode/diagnostics paths-diagnostics
+                      :nightincode/analyzer
+                      {:conn-paths conn-paths
+                       :conn-classpath conn-classpath})]
 
     (when-not (s/valid? :nightincode.state/initialized initialized)
       (log/warn (lingo/explain-str :nightincode.state/initialized initialized)))
+
+    (when (seq paths-semthetics)
+      (d/transact! conn-paths paths-semthetics))
+
+    ;; Analyze classpath on a separate thread:
+    (future
+      (when-let [result (analyze-classpath {:root-path root-path})]
+        (let [{classpath-analysis :analysis} result
+
+              classpath-index (analyzer/index classpath-analysis)
+              classpath-semthetics (analyzer/prepare-semthetics classpath-index)]
+
+          (when (seq classpath-semthetics)
+            (d/transact! conn-classpath classpath-semthetics)))))
 
     (lsp/response request
       {:capabilities capabilities
        :serverInfo
        {:name "Nightincode"
-        :version "0.12.0"}})))
+        :version "0.13.0-dev"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 

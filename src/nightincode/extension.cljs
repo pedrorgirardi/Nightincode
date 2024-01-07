@@ -29,7 +29,7 @@
 
     (vscode/languages.setLanguageConfiguration "clojure" #js {:wordPattern word-pattern})
 
-    (.appendLine output (str "Extension Path: " (.-extensionPath context) "\n"))
+    #_(.appendLine output (str "Extension Path: " (.-extensionPath context) "\n"))
 
     (.push subscriptions (.start client))
 
