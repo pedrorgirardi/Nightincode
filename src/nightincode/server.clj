@@ -8,7 +8,6 @@
    [clojure.java.shell :as shell]
    [clojure.stacktrace :as stacktrace]
    [clojure.spec.alpha :as s]
-   [clojure.pprint :as pprint]
    [clojure.tools.deps :as deps]
 
    [clj-kondo.core :as clj-kondo]
@@ -350,14 +349,10 @@
            :filename (or (uri-path uri) uri)
            :config default-clj-kondo-config})))))
 
-(defn config [root-path]
+(defn read-config [root-path]
   (let [config-file (io/file root-path "nightincode.edn")]
     (when (.exists config-file)
       (edn/read-string (slurp config-file)))))
-
-(defn analyzer-paths [config root-path]
-  (let [paths (get-in config [:analyzer :paths])]
-    (map #(.getPath (io/file root-path %)) paths)))
 
 
 ;; ---------------------------------------------------------
@@ -426,14 +421,17 @@
 ;; ---------------------------------------------------------
 
 
-(def process-text-change
+(def ^{:arglists '([{:keys [conn out uri text]}])
+       :doc "Document text analysis and publish diagnostics."}
+  process-text-change
   (debounce
     (fn [{:keys [conn out uri text]}]
       (try
-        (let [{:keys [analysis findings]} (analyze-text {:uri uri
-                                                         :text text})
+        (let [{document-findings :findings
+               document-analysis :analysis} (analyze-text {:uri uri :text text})
 
-              index (analyzer/index analysis)
+              document-diagnostics (uri->diagnostics document-findings)
+              document-index (analyzer/index document-analysis)
 
               ;; Note:
               ;; Retract file entities before adding new ones.
@@ -445,23 +443,19 @@
                         (map
                           (fn [[filename _]]
                             [:db/retractEntity [:file/path filename]]))
-                        index)
+                        document-index)
 
-              tx-data (into tx-data (analyzer/prepare-semthetics index))
+              document-semthetics (into tx-data (analyzer/prepare-semthetics document-index))]
 
-              diagnostics (uri->diagnostics findings)]
-
-          (log/info (str "\n" (with-out-str (pprint/pprint diagnostics))))
-
-          (d/transact! conn tx-data)
+          (d/transact! conn document-semthetics)
 
           (cond
-            (seq diagnostics)
+            (seq document-diagnostics)
             (do
               (set-state assoc
-                :nightincode/diagnostics (merge (_diagnostics @state-ref) diagnostics))
+                :nightincode/diagnostics (merge (_diagnostics @state-ref) document-diagnostics))
 
-              (doseq [[uri diagnostics] diagnostics]
+              (doseq [[uri diagnostics] document-diagnostics]
                 (textDocument-publishDiagnostics (_out @state-ref)
                   {:uri uri
                    :diagnostics diagnostics})))
@@ -495,7 +489,7 @@
 
   (let [root-path (get-in request [:params :rootPath])
 
-        config (config root-path)
+        config (read-config root-path)
 
         capabilities (or (:capabilities config)
                        {;; Defines how the host (editor) should sync document changes to the language server.
@@ -561,14 +555,13 @@
 
     ;; Analyze classpath on a separate thread:
     (future
-      (when-let [result (analyze-classpath {:root-path root-path})]
-        (let [{classpath-analysis :analysis} result
+      (let [{classpath-analysis :analysis} (analyze-classpath {:root-path root-path})
 
-              classpath-index (analyzer/index classpath-analysis)
-              classpath-semthetics (analyzer/prepare-semthetics classpath-index)]
+            classpath-index (analyzer/index classpath-analysis)
+            classpath-semthetics (analyzer/prepare-semthetics classpath-index)]
 
-          (when (seq classpath-semthetics)
-            (d/transact! conn-classpath classpath-semthetics)))))
+        (when (seq classpath-semthetics)
+          (d/transact! conn-classpath classpath-semthetics))))
 
     (lsp/response request
       {:capabilities capabilities
