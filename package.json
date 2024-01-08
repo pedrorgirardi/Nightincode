@@ -72,6 +72,13 @@
         ],
         "configuration": "./language-configuration.json"
       }
+    ],
+    "commands": [
+      {
+        "title": "State",
+        "category": "Nightincode Debug",
+        "command": "nightincode.debugState"
+      }
     ]
   },
   "scripts": {

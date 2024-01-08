@@ -1,5 +1,6 @@
 (ns nightincode.server
   (:require
+   [clojure.pprint :as pprint]
    [clojure.core.server :refer [start-server]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -1073,6 +1074,12 @@
          :message
          (format "Nightincode failed to find workspace symbols. (%s)\n"
            (with-out-str (stacktrace/print-stack-trace ex)))}))))
+
+(defmethod lsp/handle "nightincode/debugState" [request]
+  (log/debug "nightincode/debugState" request)
+
+  (lsp/response request
+    (select-keys @state-ref [:lsp/InitializeParams])))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server

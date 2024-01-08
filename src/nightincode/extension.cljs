@@ -1,14 +1,48 @@
 (ns nightincode.extension
   (:require
+   [clojure.pprint :as pprint]
+
    ["vscode" :as vscode]
    ["path" :as path]
    ["vscode-languageclient/node" :as client]))
 
 (def state-ref (atom nil))
 
+(defn _client
+  "Returns the language client instance."
+  [state]
+  (:client state))
+
+(defn _output-channel [state]
+  (:output-channel state))
+
 (def word-pattern
   "Clojure symbol regex."
   #"(?:/|[^\s,;\(\)\[\]{}\"`~@\^\\][^\s,;\(\)\[\]{}\"`~@\^\\]*)")
+
+(defn- register-command [name cmd]
+  (-> (.-commands ^js vscode)
+    (.registerCommand name
+      (fn []
+        (js/console.log (str "[Nightincode] RUN COMMAND '" name "'"))
+        (try
+          (cmd)
+          (catch js/Error e
+            (js/console.error (str "[Nightincode] FAILED TO RUN COMMAND '" name "'") e)))))))
+
+(defn- register-disposable [^js context ^js disposable]
+  (-> (.-subscriptions context)
+      (.push disposable)))
+
+
+(defn cmd-debug-state []
+  (when-let [r (.sendRequest (_client @state-ref) "nightincode/debugState" (clj->js {:foo :bar}))]
+    (.then r
+      (fn [result]
+        (.appendLine ^js (_output-channel @state-ref)
+          (with-out-str
+            (pprint/pprint (js->clj result))))))))
+
 
 (defn activate [^js context]
   (let [^js output (vscode/window.createOutputChannel "Nightincode")
@@ -25,18 +59,22 @@
 
         ^js subscriptions (.-subscriptions context)]
 
-    (reset! state-ref {:client client})
+    (reset! state-ref
+      {:client client
+       :output-channel output})
 
     (vscode/languages.setLanguageConfiguration "clojure" #js {:wordPattern word-pattern})
 
-    #_(.appendLine output (str "Extension Path: " (.-extensionPath context) "\n"))
-
     (.push subscriptions (.start client))
+
+    (->>
+      (register-command "nightincode.debugState" cmd-debug-state)
+      (register-disposable context))
 
     (js/console.log "Activated Nightincode")))
 
 (defn deactivate []
-  (when-let [^js client (:client @state-ref)]
+  (when-let [^js client (_client @state-ref)]
     (.stop client))
 
   (js/console.log "Deactivated Nightincode"))
