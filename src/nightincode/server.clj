@@ -567,7 +567,7 @@
       {:capabilities capabilities
        :serverInfo
        {:name "Nightincode"
-        :version "0.13.0-dev"}})))
+        :version "0.13.0"}})))
 
 (defmethod lsp/handle "initialized" [notification]
 

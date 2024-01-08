@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.13.0 - 2024-01-08
+- New Command `nightincode.dump` & LSP method `nightincode/dump`
+
 ## 0.12.0 - 2024-01-06
 - Diagnostics improvements and bug fixes
 - Analyze classpath/dependencies - it's persisted on a different database
