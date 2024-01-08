@@ -1074,7 +1074,7 @@
          (format "Nightincode failed to find workspace symbols. (%s)\n"
            (with-out-str (stacktrace/print-stack-trace ex)))}))))
 
-(defmethod lsp/handle "nightincode/debugState" [request]
+(defmethod lsp/handle "nightincode/dump" [request]
   (log/debug "nightincode/debugState" request)
 
   (lsp/response request

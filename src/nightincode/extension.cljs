@@ -33,13 +33,20 @@
       (.push disposable)))
 
 
-(defn cmd-debug-state []
-  (when-let [r (.sendRequest (_client @state-ref) "nightincode/debugState" (clj->js {:foo :bar}))]
+(defn cmd-dump []
+  (when-let [r (.sendRequest (_client @state-ref) "nightincode/dump" (clj->js {:foo :bar}))]
     (.then r
       (fn [result]
         (let [openTextDocument (vscode/workspace.openTextDocument
-                                 #js {:content (js/JSON.stringify result nil 2)
-                                      :language "json"})]
+                                 (clj->js
+                                   {:language "json"
+                                    :content
+                                    (js/JSON.stringify
+                                      (clj->js
+                                        {:extension (select-keys @state-ref [:server-options :client-options])
+                                         :server result})
+                                      nil
+                                      2)}))]
 
           (.then openTextDocument
             (fn [document]
@@ -63,14 +70,16 @@
 
     (reset! state-ref
       {:client client
-       :output-channel output})
+       :output-channel output
+       :server-options server-options
+       :client-options client-options})
 
     (vscode/languages.setLanguageConfiguration "clojure" #js {:wordPattern word-pattern})
 
     (.push subscriptions (.start client))
 
     (->>
-      (register-command "nightincode.debugState" cmd-debug-state)
+      (register-command "nightincode.dump" cmd-dump)
       (register-disposable context))
 
     (js/console.log "Activated Nightincode")))

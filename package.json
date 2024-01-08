@@ -75,9 +75,9 @@
     ],
     "commands": [
       {
-        "title": "State",
-        "category": "Nightincode Debug",
-        "command": "nightincode.debugState"
+        "title": "Dump",
+        "category": "Nightincode",
+        "command": "nightincode.dump"
       }
     ]
   },
