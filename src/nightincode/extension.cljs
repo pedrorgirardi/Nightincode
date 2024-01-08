@@ -1,7 +1,5 @@
 (ns nightincode.extension
   (:require
-   [clojure.pprint :as pprint]
-
    ["vscode" :as vscode]
    ["path" :as path]
    ["vscode-languageclient/node" :as client]))

@@ -1,6 +1,5 @@
 (ns nightincode.server
   (:require
-   [clojure.pprint :as pprint]
    [clojure.core.server :refer [start-server]]
    [clojure.edn :as edn]
    [clojure.java.io :as io]
@@ -1079,7 +1078,10 @@
   (log/debug "nightincode/debugState" request)
 
   (lsp/response request
-    (select-keys @state-ref [:lsp/InitializeParams])))
+    (select-keys @state-ref [:lsp/InitializedParams
+                             :lsp/InitializeParams
+                             :nightincode/document-index
+                             :nightincode/diagnostics])))
 
 (defn start [config]
   (let [^ServerSocket server-socket (start-server
