@@ -39,9 +39,13 @@
   (when-let [r (.sendRequest (_client @state-ref) "nightincode/debugState" (clj->js {:foo :bar}))]
     (.then r
       (fn [result]
-        (.appendLine ^js (_output-channel @state-ref)
-          (with-out-str
-            (pprint/pprint (js->clj result))))))))
+        (let [openTextDocument (vscode/workspace.openTextDocument
+                                 #js {:content (js/JSON.stringify result nil 2)
+                                      :language "json"})]
+
+          (.then openTextDocument
+            (fn [document]
+              (vscode/window.showTextDocument document))))))))
 
 
 (defn activate [^js context]
