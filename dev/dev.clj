@@ -378,3 +378,47 @@
 
 
   )
+
+(comment
+
+  (require '[clojure.edn :as edn])
+
+  (def s (java.net.Socket. "localhost" 5555))
+
+  (.close s)
+
+  ;; ---
+
+  (def r
+    (java.io.BufferedReader.
+      (java.io.InputStreamReader.
+        (.getInputStream s))))
+
+  (.close r)
+
+  ;; ---
+
+  (def w
+    (java.io.PrintWriter.
+      (.getOutputStream s) true))
+
+  (.close w)
+
+  ;; ---
+
+  (.println w "(do (println 1) *ns*)")
+
+  ;; pREPL
+  ;; clj -J-Dclojure.server.repl="{:port 5555 :accept clojure.core.server/io-prepl}"
+  (loop [result nil]
+    (cond
+      (.ready r)
+      (recur
+        ((fnil conj []) result
+          (edn/read-string
+            (.readLine r))))
+
+      :else
+      result))
+
+  )
