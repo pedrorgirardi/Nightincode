@@ -10,3 +10,7 @@
 (defn b [x] (+ x a))
 
 (inc "1")
+
+(let [x 1
+      y 2]
+  x)
