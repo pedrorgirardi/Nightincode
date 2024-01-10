@@ -359,7 +359,7 @@
 
 ;; -- Functions to read and write from and to state
 
-(def state-ref (atom nil))
+(defonce state-ref (atom nil))
 
 (defn set-state [f & args]
   (swap! state-ref #(apply f % args)))
@@ -452,8 +452,8 @@
           (cond
             (seq document-diagnostics)
             (do
-              (set-state assoc
-                :nightincode/diagnostics (merge (_diagnostics @state-ref) document-diagnostics))
+              (set-state update
+                :nightincode/diagnostics merge document-diagnostics)
 
               (doseq [[uri diagnostics] document-diagnostics]
                 (textDocument-publishDiagnostics (_out @state-ref)
