@@ -152,15 +152,15 @@
             (s/valid? :clj-kondo/finding finding)))
         (map
           (fn [{:keys [filename] :as finding}]
-            (let [uri (URI. filename)
-                  file? (= (.getScheme uri) "file")]
-              (with-meta (diagnostic finding)
-                ;; Unsaved files don't have a "file" scheme,
-                ;; and it should not be converted to a URI.
-                {:uri
-                 (if file?
-                   (.toString uri)
-                   filename)})))))
+            (with-meta (diagnostic finding)
+              ;; Unsaved files should not be converted to a URI.
+              {:uri
+               (if (.exists (io/file filename))
+                 ;; It's simpler to `(.toURI file)`,
+                 ;; but it doesn't return a triple slash like file:///.
+                 ;; Using the constructor URI(scheme, authority, path, query, fragment) does it:
+                 (.toString (java.net.URI. "file" "" filename nil nil))
+                 filename)}))))
       findings)))
 
 (defn semthetic-markdown
@@ -423,7 +423,7 @@
 
 (def ^{:arglists '([{:keys [conn out uri text]}])
        :doc "Document text analysis and publish diagnostics."}
-  process-text-change
+  handle-text
   (debounce
     (fn [{:keys [conn out uri text]}]
       (try
@@ -710,7 +710,7 @@
       (set-state assoc-in [:nightincode/document-index text-document-uri] {:text text-document-text})
 
       ;; Text change processing and diagnostics is debounced.
-      (process-text-change
+      (handle-text
         {:uri text-document-uri
          :text text-document-text
          :conn (_analyzer-conn-paths @state-ref)
@@ -741,7 +741,7 @@
                                                                            :version text-document-version})
 
       ;; Text change processing and diagnostics is debounced.
-      (process-text-change
+      (handle-text
         {:uri text-document-uri
          :text text-document-text
          :conn (_analyzer-conn-paths @state-ref)
