@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.13.1 - 2024-01-10
+- Fix file URI in diagnostics
+
 ## 0.13.0 - 2024-01-08
 - New Command `nightincode.dump` & LSP method `nightincode/dump`
 
