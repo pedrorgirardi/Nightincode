@@ -1,5 +1,6 @@
 (ns nightincode.analyzer-test
   (:require
+   [clojure.spec.alpha :as s]
    [clojure.java.io :as io]
    [clojure.test :refer [deftest testing is]]
 
@@ -101,3 +102,14 @@
                 :var/ns example1
                 :var/row 3}]}]
           (analyzer/prepare-semthetics index)))))
+
+(deftest diagnostics-test
+  (is (= {} (analyzer/diagnostics nil)))
+  (is (= {} (analyzer/diagnostics [])))
+
+  (testing "example1 findings"
+    (let [{:keys [findings]} (clj-kondo/run!
+                               {:lint [(.getPath (io/resource "example1.cljc"))]
+                                :config analyzer/default-clj-kondo-config})]
+      (is (= true
+            (s/valid? :nightincode/diagnostics (analyzer/diagnostics findings)))))))

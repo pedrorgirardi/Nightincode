@@ -47,6 +47,59 @@
    :output
    {:canonical-paths true}})
 
+(defn diagnostic
+  "Returns a Diagnostic for a clj-kondo finding.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
+  [{:keys [row
+           end-row
+           col
+           end-col
+           message
+           level]}]
+  {:range
+   {:start
+    {:line (dec row)
+     :character (dec col)}
+    :end
+    {:line (dec (or end-row row))
+     :character (dec (or end-col col))}}
+   :source "Nightincode"
+   :message message
+   :severity
+   (case level
+     :error
+     1
+     :warning
+     2
+
+     3)})
+
+(defn diagnostics
+  "Returns a map of URI to Diagnostics.
+
+  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
+  [findings]
+  (group-by
+    (comp :uri meta)
+    (into []
+      (comp
+        (filter
+          (fn [finding]
+            (s/valid? :clj-kondo/finding finding)))
+        (map
+          (fn [{:keys [filename] :as finding}]
+            (with-meta (diagnostic finding)
+              ;; Unsaved files should not be converted to a URI.
+              {:uri
+               (if (.exists (io/file filename))
+                 ;; It's simpler to `(.toURI file)`,
+                 ;; but it doesn't return a triple slash like file:///.
+                 ;; Using the constructor URI(scheme, authority, path, query, fragment) does it:
+                 (.toString (java.net.URI. "file" "" filename nil nil))
+                 filename)}))))
+      findings)))
+
 (defn cursor-loc
   "Returns a loc in `locs` for `position`."
   [cursor-semthetic position]

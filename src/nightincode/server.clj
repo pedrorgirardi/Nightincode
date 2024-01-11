@@ -110,59 +110,6 @@
                    (throw (ex-info (format "Can't convert %s to java.net.URI." uri) {})))]
     (.getPath uri)))
 
-(defn diagnostic
-  "Returns a Diagnostic for a clj-kondo finding.
-
-  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
-  [{:keys [row
-           end-row
-           col
-           end-col
-           message
-           level]}]
-  {:range
-   {:start
-    {:line (dec row)
-     :character (dec col)}
-    :end
-    {:line (dec (or end-row row))
-     :character (dec (or end-col col))}}
-   :source "Nightincode"
-   :message message
-   :severity
-   (case level
-     :error
-     1
-     :warning
-     2
-
-     3)})
-
-(defn uri->diagnostics
-  "Returns a map of URI to Diagnostics.
-
-  https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#diagnostic"
-  [findings]
-  (group-by
-    (comp :uri meta)
-    (into []
-      (comp
-        (filter
-          (fn [finding]
-            (s/valid? :clj-kondo/finding finding)))
-        (map
-          (fn [{:keys [filename] :as finding}]
-            (with-meta (diagnostic finding)
-              ;; Unsaved files should not be converted to a URI.
-              {:uri
-               (if (.exists (io/file filename))
-                 ;; It's simpler to `(.toURI file)`,
-                 ;; but it doesn't return a triple slash like file:///.
-                 ;; Using the constructor URI(scheme, authority, path, query, fragment) does it:
-                 (.toString (java.net.URI. "file" "" filename nil nil))
-                 filename)}))))
-      findings)))
-
 (defn semthetic-markdown
   [semthetic]
   (let [{:semthetic/keys [semantic modifier doc]} semthetic
@@ -430,7 +377,7 @@
         (let [{document-findings :findings
                document-analysis :analysis} (analyze-text {:uri uri :text text})
 
-              document-diagnostics (uri->diagnostics document-findings)
+              document-diagnostics (analyzer/diagnostics document-findings)
               document-index (analyzer/index document-analysis)
 
               ;; Note:
@@ -536,7 +483,7 @@
         {paths-findings :findings
          paths-analysis :analysis} (analyze-paths {:root-path root-path})
 
-        paths-diagnostics (uri->diagnostics paths-findings)
+        paths-diagnostics (analyzer/diagnostics paths-findings)
         paths-index (analyzer/index paths-analysis)
         paths-semthetics (analyzer/prepare-semthetics paths-index)
 
