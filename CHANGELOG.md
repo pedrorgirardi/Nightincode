@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.14.0 - in development
+## 0.14.0 - 2024-02-13
 - Updated clj-kondo/clj-kondo
 - Updated org.clojure/tools.logging
 
