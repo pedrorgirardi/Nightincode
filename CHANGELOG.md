@@ -4,6 +4,7 @@ All notable changes to this project will be documented in this file.
 
 ## 0.14.0 - in development
 - Updated clj-kondo/clj-kondo
+- Updated org.clojure/tools.logging
 
 ## 0.13.1 - 2024-01-10
 - Fix file URI in diagnostics
