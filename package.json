@@ -2,7 +2,7 @@
   "name": "nightincode",
   "displayName": "Nightincode",
   "description": "Elemental Clojure/Script support for Visual Studio Code.",
-  "version": "0.14.0",
+  "version": "0.15.0-dev",
   "publisher": "pedrorgirardi",
   "author": {
     "name": "Pedro Girardi",
@@ -89,7 +89,7 @@
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
-    "shadow-cljs": "^2.26.2"
+    "shadow-cljs": "^2.28.6"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
