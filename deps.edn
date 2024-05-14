@@ -16,8 +16,7 @@
   {:jvm-opts ["-Dclojure.server.repl={:port,5555,:accept,clojure.core.server/repl}"]}
 
   :build
-  {:deps {io.github.clojure/tools.build {:git/tag "v0.9.6"
-                                         :git/sha "8e78bcc"}}
+  {:deps {io.github.clojure/tools.build {:git/tag "v0.10.3" :git/sha "15ead66"}}
    :ns-default build}
 
   :dev
