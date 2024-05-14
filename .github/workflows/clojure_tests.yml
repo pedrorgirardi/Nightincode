@@ -6,6 +6,7 @@ on:
       - 'bin/test'
       - '**/*.clj'
       - '**/*.cljc'
+      - '**/*.edn'
 
 jobs:
   build:
