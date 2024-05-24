@@ -38,5 +38,5 @@
    :exec-args {:dirs ["test"]}}
 
   :kaocha
-  {:extra-deps {lambdaisland/kaocha {:mvn/version "1.89.1380"}}
+  {:extra-deps {lambdaisland/kaocha {:mvn/version "1.91.1392"}}
    :main-opts ["-m" "kaocha.runner"]}}}
