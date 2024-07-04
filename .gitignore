@@ -13,3 +13,4 @@ target/
 nightincode.jar
 .nightincode/
 .pep/
+.rebel_readline_history
