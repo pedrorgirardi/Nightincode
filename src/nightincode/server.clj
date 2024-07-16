@@ -189,8 +189,10 @@
   [{:semthetic/keys [semantic]}]
   (case semantic
     :namespace
+    ;; SymbolKind.Namespace
     3
 
+    ;; SymbolKind.Field
     8))
 
 (defn semthetic-symbol-range
