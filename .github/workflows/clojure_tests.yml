@@ -20,7 +20,7 @@ jobs:
           java-version: '17.0.0+35'
       - uses: DeLaGuardo/setup-clojure@master
         with:
-          cli: '1.11.3.1463'
+          cli: '1.11.4.1474'
       - name: Cache dependencies
         uses: actions/cache@v4
         with:
