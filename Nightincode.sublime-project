@@ -6,8 +6,7 @@
             "folder_exclude_patterns": [".clj-kondo", "node_modules", "target"],
         }
     ],
-    "pep": {
-        "paths": ["src", "dev", "test"],
-        "classpath": "clojure -Spath"
+    "smarts": {
+        "start": "Nightincode"
     }
 }
