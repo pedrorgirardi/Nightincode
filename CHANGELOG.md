@@ -2,7 +2,7 @@
 
 All notable changes to this project will be documented in this file.
 
-## 0.15.0 - in development
+## 0.15.0 - 2024-10-16
 - Updated all dependencies
 
 ---
