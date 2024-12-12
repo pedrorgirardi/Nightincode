@@ -35,7 +35,7 @@
   {:extra-deps
    {io.github.cognitect-labs/test-runner
     {:git/url "https://github.com/cognitect-labs/test-runner.git"
-     :sha "9d36f36ff541dac680a05010e4348c744333f191"}}
+     :sha "3f288f1f16d167723ad87cc35b1dfee3c1681e10"}}
 
    :exec-fn cognitect.test-runner.api/test
    :exec-args {:dirs ["test"]}}
