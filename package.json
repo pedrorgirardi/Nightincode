@@ -30,7 +30,7 @@
   "contributes": {
     "configurationDefaults": {
       "[clojure]": {
-        "editor.wordSeparators": "()[]{}\\,;@$%^&|\"`~"
+        "editor.wordSeparators": "()[]{}\\/,;@$%^&|\"`~\/"
       }
     },
     "configuration": [
@@ -89,7 +89,7 @@
     "package": "npx @vscode/vsce package"
   },
   "devDependencies": {
-    "@vscode/vsce": "^2.29.0",
+    "@vscode/vsce": "^3.2.1",
     "shadow-cljs": "^2.28.8"
   },
   "dependencies": {
