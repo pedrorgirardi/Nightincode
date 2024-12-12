@@ -24,3 +24,11 @@ resources/
 nightincode.edn
 build.clj
 .nightincode/
+.clj-kondo/
+.cpcache/
+.lsp/
+.pep/
+bin/
+tests.edn
+.rebel_readline_history
+.github/
