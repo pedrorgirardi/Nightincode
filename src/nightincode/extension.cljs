@@ -56,10 +56,13 @@
 (defn activate [^js context]
   (let [^js output (vscode/window.createOutputChannel "Nightincode")
 
-        server-JAR-path (path/join (.-extensionPath context) "nightincode.jar")
+        ;; server-JAR-path (path/join (.-extensionPath context) "nightincode.jar")
 
-        server-options #js{:run #js{:command "java" :args #js["-jar", server-JAR-path]}
-                           :debug #js{:command "java" :args #js["-jar", server-JAR-path]}}
+        ;; server-options #js{:run #js{:command "java" :args #js["-jar", server-JAR-path]}
+        ;;                    :debug #js{:command "java" :args #js["-jar", server-JAR-path]}}
+
+        server-options #js{:run #js{:command "/opt/homebrew/bin/clojure-lsp" :args #js["listen"]}
+                           :debug #js{:command "/opt/homebrew/bin/clojure-lsp" :args #js["listen"]}}
 
         client-options #js{:documentSelector #js[#js{:language "clojure"}]
                            :outputChannel output}
