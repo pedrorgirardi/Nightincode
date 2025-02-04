@@ -1,7 +1,6 @@
 (ns nightincode.extension
   (:require
    ["vscode" :as vscode]
-   ["path" :as path]
    ["vscode-languageclient/node" :as client]))
 
 (def state-ref (atom nil))
@@ -10,9 +9,6 @@
   "Returns the language client instance."
   [state]
   (:client state))
-
-(defn _output-channel [state]
-  (:output-channel state))
 
 (def word-pattern
   "Clojure symbol regex."
@@ -28,10 +24,10 @@
           (catch js/Error e
             (js/console.error (str "[Nightincode] FAILED TO RUN COMMAND '" name "'") e)))))))
 
-(defn- register-disposable [^js context ^js disposable]
+(defn- register-disposable 
+  [^js context ^js disposable]
   (-> (.-subscriptions context)
       (.push disposable)))
-
 
 (defn cmd-dump []
   (when-let [r (.sendRequest (_client @state-ref) "nightincode/dump" (clj->js {:foo :bar}))]
