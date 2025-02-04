@@ -7,7 +7,7 @@
   org.clojure/tools.deps {:mvn/version "0.21.1467"}
   
   com.exoscale/lingo {:mvn/version "1.0.5"}
-  datascript/datascript {:mvn/version "1.7.3"}
+  datascript/datascript {:mvn/version "1.7.4"}
   ch.qos.logback/logback-classic {:mvn/version "1.5.16"}
   clj-kondo/clj-kondo {:mvn/version "2025.01.16"}}
 
