@@ -9,7 +9,7 @@
   com.exoscale/lingo {:mvn/version "1.0.5"}
   datascript/datascript {:mvn/version "1.7.3"}
   ch.qos.logback/logback-classic {:mvn/version "1.5.15"}
-  clj-kondo/clj-kondo {:mvn/version "2024.11.14"}}
+  clj-kondo/clj-kondo {:mvn/version "2025.01.16"}}
 
  :aliases
  {:repl
