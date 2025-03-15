@@ -298,11 +298,6 @@
            :filename (or (uri-path uri) uri)
            :config default-clj-kondo-config})))))
 
-(defn read-config [root-path]
-  (let [config-file (io/file root-path "nightincode.edn")]
-    (when (.exists config-file)
-      (edn/read-string (slurp config-file)))))
-
 
 ;; ---------------------------------------------------------
 
@@ -438,42 +433,39 @@
 
   (let [root-path (get-in request [:params :rootPath])
 
-        config (read-config root-path)
+        capabilities {;; Defines how the host (editor) should sync document changes to the language server.
+                      ;;
+                      ;; 0: Documents should not be synced at all.
+                      ;; 1: Documents are synced by always sending the full content of the document.
+                      ;; 2: Documents are synced by sending the full content on open.
+                      ;;    After that only incremental updates to the document are send.
+                      ;;
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
+                      :textDocumentSync 1
 
-        capabilities (or (:capabilities config)
-                       {;; Defines how the host (editor) should sync document changes to the language server.
-                        ;;
-                        ;; 0: Documents should not be synced at all.
-                        ;; 1: Documents are synced by always sending the full content of the document.
-                        ;; 2: Documents are synced by sending the full content on open.
-                        ;;    After that only incremental updates to the document are send.
-                        ;;
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentSyncKind
-                        :textDocumentSync 1
+                      ;; Goto Definition Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
+                      :definitionProvider true
 
-                        ;; Goto Definition Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_definition
-                        :definitionProvider true
+                      ;; Find References Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_references
+                      :referencesProvider true
 
-                        ;; Find References Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_references
-                        :referencesProvider true
+                      ;; Document Highlights Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
+                      :documentHighlightProvider true
 
-                        ;; Document Highlights Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentHighlight
-                        :documentHighlightProvider true
+                      ;; Hover Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
+                      :hoverProvider true
 
-                        ;; Hover Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_hover
-                        :hoverProvider true
+                      ;; Document Symbols Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
+                      :documentSymbolProvider true
 
-                        ;; Document Symbols Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
-                        :documentSymbolProvider true
-
-                        ;; Workspace Symbols Request
-                        ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol 
-                        :workspaceSymbolProvider true})
+                      ;; Workspace Symbols Request
+                      ;; https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#workspace_symbol
+                      :workspaceSymbolProvider true}
 
         ;; Databases:
         ;; Paths and classpath analysis are persisted in different databases.

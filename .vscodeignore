@@ -21,7 +21,6 @@ deps.edn
 target/
 dev/
 resources/
-nightincode.edn
 build.clj
 .nightincode/
 .clj-kondo/
