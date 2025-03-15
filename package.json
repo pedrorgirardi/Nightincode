@@ -90,7 +90,7 @@
   },
   "devDependencies": {
     "@vscode/vsce": "^3.2.2",
-    "shadow-cljs": "^2.28.20"
+    "shadow-cljs": "^2.28.21"
   },
   "dependencies": {
     "vscode-languageclient": "^9.0.1"
